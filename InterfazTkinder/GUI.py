@@ -1,6 +1,6 @@
 import tkinter as tk
 from tkinter import messagebox, filedialog
-from PIL import Image, ImageTk
+from PIL import Image, Image
 
 ventana = tk.Tk()
 ventana.title("Envio de paciente DICOM ")
@@ -13,7 +13,7 @@ def seleccionar_imagen():
     ruta_imagen = filedialog.askopenfilename(title="Seleccionar Imagen", filetypes=[("Archivos de imagen", "*.png *.jpg *.jpeg")])
     if ruta_imagen:
         imagen_pil = Image.open(ruta_imagen)
-        imagen_pil = imagen_pil.resize((200, 200), Image.ANTIALIAS)
+        imagen_pil = imagen_pil.resize((200, 200), Image.ANTIALIAS) 
         imagen = ImageTk.PhotoImage(imagen_pil)
         etiqueta_imagen.configure(image=imagen)
         etiqueta_imagen.image = imagen
