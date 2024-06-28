@@ -44,6 +44,7 @@ fDate = tk.Frame(master=window)
 fDate.grid(row=4, column=0, padx=10, pady=10)
 lDate = tk.Label(master=fDate, text="Fecha del Examen:", font=("arial", 10))
 lDate.pack()
+<<<<<<< HEAD
 
 #CONFIGURACION DE TEXTBOX
 
@@ -68,4 +69,7 @@ entryDate = tk.Entry(master=fEntryDate)
 entryDate.pack()
 
 
+=======
+
+>>>>>>> 61d0721dfcf8fe52633979696c888e58824a4ce7
 window.mainloop() #Fin de app
