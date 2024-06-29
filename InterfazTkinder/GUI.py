@@ -23,14 +23,20 @@ root.columnconfigure(1,weight=3)
 #FUNCIONES DE LOS BOTONES
 
 #Para abrir el explorador y buscar solo imagenes jpg
+
+loadedImages =[] #Lista para cargar imagenes
 def open_image():
-    file_path = filedialog.askopenfilename(filetypes=[("JPG files", "*.jpg"), ("JPEG files", "*.jpeg"), ("All files", "*.*")])
+    file_paths = filedialog.askopenfilename(filetypes=[("JPG files", "*.jpg"), ("JPEG files", "*.jpeg"), ("All files", "*.*")])
     
-    if file_path:
-        image = Image.open(file_path)
-        ctk_image = ctk.CTkImage(light_image=image, size=(400, 400))
-        lPicture.configure(image=ctk_image, text="")
-        lPicture.image = ctk_image
+    for file_path in file_paths:
+        if file_path:
+            image = Image.open(file_path)
+            ctk_image = ctk.CTkImage(light_image=image, size=(400, 400))
+            loadedImages.append(ctk_image)
+
+            # Actualizar el label con la nueva imagen
+            lPicture.configure(image=ctk_image, text="")
+            lPicture.image = ctk_image
 
 
 #CONFIGURACION DE LABELS DE DATOS DEL PACIENTE
@@ -96,18 +102,19 @@ lPicture = ctk.CTkLabel(master=fPicture, text="Sin Imagen")
 lPicture.pack(fill=BOTH)
 
 #BOTONES
-
-fLoadImage = ctk.CTkFrame(root)
-fLoadImage.grid(row=6, column=0, padx=10, pady=10, sticky="n")
-BLoadImage = ctk.CTkButton(master=fLoadImage, text="Cargar JPG", command=open_image)
-BLoadImage.pack()
-
-fSendImage = ctk.CTkFrame(root)
-fSendImage.grid(row=6, column=1, padx=10, pady=10)
-BSendImage = ctk.CTkButton(master=fSendImage, text="Enviar DCM")
-BSendImage.pack()
+bgRoot = root.cget("bg") #Para adquirir el color de la ventana
+fButton = ctk.CTkFrame(root, fg_color=bgRoot)
+fButton.grid(row=7, column=0, rowspan=1, columnspan=2, padx=10, pady=10, sticky="n")
+BLoadImage = ctk.CTkButton(master=fButton, text="Cargar JPG", command=open_image)
+BSendImage = ctk.CTkButton(master=fButton, text="Enviar DCM")
+BLoadImage.grid(row=0, column=0, padx=20)
+BSendImage.grid(row=0, column=1, padx=20)
 
 
+#SLIDER PARA VER IMAGENES 
+
+slider = ctk.CTkSlider(master=root, from_=0, to=100, border_width=10)
+slider.grid(row=6, column=0, rowspan=1, columnspan=2, sticky="nsew", padx=20, pady=20)
 
 
 root.mainloop() #Fin de app
