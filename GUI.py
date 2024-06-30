@@ -1,9 +1,10 @@
+#Librerias
 from tkinter import *
 import customtkinter as ctk
 from PIL import Image, ImageTk
 from tkinter import filedialog
 
-# Configuración de la ventana
+#Configuración de la ventana
 root = ctk.CTk()
 root.config(borderwidth=10)
 root.title("JPGtoDICOM Sender")
@@ -16,51 +17,55 @@ ctk.set_default_color_theme("blue")
 root.columnconfigure(0, weight=1)
 root.columnconfigure(1, weight=3)
 
-# Variables globales
-loaded_images = [] #Lista vacia donde se van albergar las imagenes seleecionadas
+#Listas
+loaded_images = []
+
+#Contador
 current_image_index = 0
 
 # Eventos
 
-def open_image(): #Para abrir el explorador.
+#Seleccion de imagenes
+def open_image():
     global current_image_index
     file_paths = filedialog.askopenfilenames(filetypes=[("JPG files", "*.jpg"), ("JPEG files", "*.jpeg"), ("All files", "*.*")])
-    if file_paths: #Si se seleccionan archivos, para evitar que al querer cargar y dar cancelar me borre las anteriormente cargadas
-        for file_path in file_paths: #Redimencionamos y asignamos a las imagenes a una variable
+    if file_paths: 
+        for file_path in file_paths: 
                 image = Image.open(file_path)
-                ctk_image = ctk.CTkImage(light_image=image, size=(400, 400)) #Redimensionamiento
-                loaded_images.append(ctk_image) #Variable ctk_image contiene la lista de imagenes
-    if len(loaded_images) > 0: #Condicionales que configuran el comportamiento del slider si es 1 o varias imagenes
+                ctk_image = ctk.CTkImage(light_image=image, size=(400, 400)) 
+                loaded_images.append(ctk_image)
+    #Comportamiento de label y slide
+    if len(loaded_images) > 0:
         current_image_index = 0
         update_image()
         if len(loaded_images) > 1:
-            slider.configure(from_=0, to=len(loaded_images) - 1, state=NORMAL)  # Configurar el rango del slider
+            slider.configure(from_=0, to=len(loaded_images) - 1, state=NORMAL)
         else:
-            slider.configure(state=DISABLED)  # Deshabilitar el slider si solo hay una imagen
-            slider.set(0)  # Restablecer el slider a la posición inicial
+            slider.configure(state=DISABLED)
+            slider.set(0)
     else:
         slider.configure(state=DISABLED)
         slider.set(0)
         
-
-def update_image(): #Actualiza la configuracion del label que contiene la imagen
+#Actualiza las imagenes en el label
+def update_image():
     global current_image_index
     if loaded_images:
         ctk_image = loaded_images[current_image_index]
         lPicture.configure(image=ctk_image, text="")
         lPicture.image = ctk_image
-
-def on_slider_change(value): #Actualiza el conportamiento del slider al cargar las imagenes
+#Actualiza el slider
+def on_slider_change(value):
         global current_image_index
         current_image_index = int(value)
         update_image()
-
-def delete_list(): #Para borrar la lista de elementos de loaded_images cada que apretas un boton
+#Reiniciar lista de imagenes
+def delete_list():
     global loaded_images
     loaded_images.clear()
     print("DATOS BORRADOS", len(loaded_images))
-
-def push_uploadbutton(): #Comandos combinados
+#Comandos combinados
+def push_uploadbutton():
     delete_list()
     open_image()
 
@@ -90,7 +95,7 @@ fDate.grid(row=4, column=0, padx=5, pady=10, sticky="nsew")
 lDate = ctk.CTkLabel(master=fDate, text="Fecha del Examen:", font=("arial", 12))
 lDate.pack()
 
-# Configuración de textboxes
+# Configuración de comboboxes
 fEntryId = ctk.CTkFrame(root)
 fEntryId.grid(row=1, column=1, padx=10, pady=10, sticky="nsew")
 entryId = ctk.CTkEntry(master=fEntryId)
@@ -130,4 +135,5 @@ BSendImage.grid(row=0, column=1, padx=20)
 slider = ctk.CTkSlider(master=root, from_=0, to=100, command=on_slider_change, state=DISABLED)
 slider.grid(row=6, column=0, rowspan=1, columnspan=2, sticky="nsew", padx=20, pady=20)
 
-root.mainloop()  # Fin de la aplicación
+# Fin de la aplicación
+root.mainloop()  
