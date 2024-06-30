@@ -1,22 +1,21 @@
-#Librerias
+# Librerias
+import os
 from tkinter import *
-import customtkinter as ctk
+from tkinter import filedialog, messagebox
 from PIL import Image, ImageTk
-from tkinter import filedialog
-import pydicom
 from pydicom.dataset import FileDataset, Dataset
 from pydicom.uid import generate_uid
 from datetime import datetime
-import os
+import customtkinter as ctk
 
-# Directorio base donde se guardarán las carpetas de cada paciente
+# Directorio base donde se guardarán las carpetas de cada paciente 
 base_directory = "./dicom_images"
 
 # Crear directorio base si no existe
 if not os.path.exists(base_directory):
     os.makedirs(base_directory)
 
-#Configuración de la ventana
+# Configuración de la ventana
 root = ctk.CTk()
 root.config(borderwidth=10)
 root.title("JPGtoDICOM Sender")
@@ -29,27 +28,27 @@ ctk.set_default_color_theme("blue")
 root.columnconfigure(0, weight=1)
 root.columnconfigure(1, weight=3)
 
-#Listas
+# Listas
 loaded_images = []
 
-#Contador
+# Contador
 current_image_index = 0
 
 # Eventos
 
-#Seleccion de imagenes
+# Seleccion de imagenes
 def open_image():
     global current_image_index
     file_paths = filedialog.askopenfilenames(filetypes=[("JPG files", "*.jpg"), ("JPEG files", "*.jpeg"), ("All files", "*.*")])
-    if file_paths: 
-        for file_path in file_paths: 
-                image = Image.open(file_path)
-                ctk_image = ctk.CTkImage(light_image=image, size=(400, 400)) 
-                loaded_images.append(ctk_image)
-        #Actualizar label de fecha
+    if file_paths:
+        for file_path in file_paths:
+            image = Image.open(file_path)
+            ctk_image = ctk.CTkImage(light_image=image, size=(400, 400))
+            loaded_images.append(ctk_image)
+        # Actualizar label de fecha
         entryDate.delete(0, END)
         entryDate.insert(0, get_current_date())
-    #Comportamiento de label y slide
+    # Comportamiento de label y slide
     if len(loaded_images) > 0:
         current_image_index = 0
         update_image()
@@ -62,55 +61,67 @@ def open_image():
     else:
         slider.configure(state=DISABLED)
         slider.set(0)
-#adquirir fecha actual
+
+# Adquirir fecha actual
 def get_current_date():
-    now = datetime.now()  # Usa datetime desde la biblioteca estándar
+    now = datetime.now()
     return now.strftime("%d/%m/%Y")
-#Actualiza las imagenes en el label
+
+# Actualiza las imagenes en el label
 def update_image():
     global current_image_index
     if loaded_images:
         ctk_image = loaded_images[current_image_index]
         lPicture.configure(image=ctk_image, text="")
-        lPicture.image = ctk_image
-#Actualiza el slider
+
+# Actualiza el slider
 def on_slider_change(value):
-        global current_image_index
-        current_image_index = int(value)
-        update_image()
-#Reiniciar lista de imagenes
+    global current_image_index
+    current_image_index = int(value)
+    update_image()
+
+# Reiniciar lista de imagenes
 def delete_list():
     global loaded_images
     loaded_images.clear()
-    print("DATOS BORRADOS", len(loaded_images))
-#Comandos combinados
-def push_uploadbutton():
+
+# Comandos combinados
+def push_cargarbutton():
     global loaded_images
     # Borra el contenido de los Entry
     entryId.delete(0, 'end')
     entryName.delete(0, 'end')
     entryLastname.delete(0, 'end')
     entryDate.delete(0, 'end')
-    
+
     # Borra la lista de imágenes cargadas
     delete_list()
     open_image()
 
-def push_sendbutton():
-    if loaded_images:
-        # Obtener datos del paciente
-        patient_id = entryId.get()
-        patient_name = entryName.get()
-        exam_date_str = entryDate.get()
+# Funcion del boton Enviar DCM
+def push_convertbutton():
+    global success
+    success = False  # Inicializar success fuera del bloque if
 
-        # Validar y convertir la fecha
-        try:
-            exam_date = datetime.strptime(exam_date_str, '%d/%m/%Y')
-        except ValueError:
-            # Manejar el caso donde la fecha no coincide con el formato esperado
-            print(f"Error: '{exam_date_str}' no es una fecha válida en formato DD-MM-YYYY.")
-            return
-        
+    # Obtener datos del paciente
+    patient_id = entryId.get().strip()
+    patient_name = entryName.get().strip()
+    lastname = entryLastname.get().strip()
+    exam_date_str = entryDate.get().strip()
+
+    # Verificar si algún campo está vacío
+    if not patient_id or not patient_name or not lastname or not exam_date_str:
+        messagebox.showerror("Error", "Todos los campos de ID del paciente, Nombre, Apellido y Fecha del examen deben ser llenados.")
+        return
+
+    try:
+        exam_date = datetime.strptime(exam_date_str, '%d/%m/%Y')
+    except ValueError:
+        # Manejar el caso donde la fecha no coincide con el formato esperado
+        messagebox.showerror("Error", "La fecha del examen no es válida. Use el formato DD/MM/YYYY.")
+        return
+
+    if loaded_images:
         # Crear directorio para el paciente si no existe
         patient_directory = os.path.join(base_directory, f"Patient_{patient_id}")
         if not os.path.exists(patient_directory):
@@ -118,6 +129,7 @@ def push_sendbutton():
 
         # Inicializar series_number para la primera serie
         series_number = 1
+        success = True  # Variable para rastrear el éxito de la conversión
 
         # Convertir cada imagen cargada a DICOM
         for i, ctk_image in enumerate(loaded_images, start=1):
@@ -126,34 +138,47 @@ def push_sendbutton():
                 original_image = ctk_image._light_image  # Revisar si el atributo es _light_image
             except AttributeError:
                 print("El objeto CTkImage no tiene un atributo _light_image.")
-                return
-            
+                success = False  # Marcar éxito como falso si alguna conversión falla
+                break  # Detener el proceso de conversión si ocurre un error
+
             # Calcular instance_number para este frame
             instance_number = i
-            
-            # Convertir la imagen original a formato DICOM
-            dicom_filename = convert_to_dicom(original_image, patient_id, patient_name, exam_date, series_number, instance_number, patient_directory)
-            print(f"Imagen convertida a DICOM: {dicom_filename}")
 
-def convert_to_dicom(image, patient_id, patient_name, exam_date, series_number, instance_number, patient_directory):
+            # Convertir la imagen original a formato DICOM
+            dicom_filename = convert_to_dicom(original_image, patient_id, patient_name, lastname, exam_date, series_number, instance_number, patient_directory)
+            if dicom_filename:
+                print(f"Imagen convertida a DICOM: {dicom_filename}")
+            else:
+                success = False  # Marcar éxito como falso si alguna conversión falla
+                break  # Detener el proceso de conversión si ocurre un error
+
+        if success:
+            messagebox.showinfo("Estado de conversión de imágenes", "Imágenes JPG convertidas a DICOM exitosamente")
+        else:
+            messagebox.showerror("Estado de conversión de imágenes", "Hubo un error al convertir algunas imágenes a DICOM")
+    else:
+        messagebox.showerror("Error", "No hay imágenes cargadas para convertir.")
+
+# Boton enviar a servidor
+def menssage_convert():
+    messagebox.showinfo("Estado de conversión de imágenes", "Imágenes JPG convertidos a Paciente DCM Exitosamente")
+
+# Converitr JPG a DCM
+def convert_to_dicom(image, patient_id, patient_name, lastname, exam_date, series_number, instance_number, patient_directory):
     # Crear un objeto Dataset DICOM vacío
     ds = Dataset()
-
     # Añadir metadatos DICOM requeridos
     ds.PatientID = patient_id
-    ds.PatientName = patient_name
+    ds.PatientName = f"{lastname}^{patient_name}"  # Formato: Apellido^Nombre
     ds.Modality = "OT"  # Modality (Modalidad) específica para tu tipo de imagen
-    ds.StudyDate = exam_date.strftime('%Y%m%d')
-    
+    ds.StudyDate = exam_date.strftime('%Y%m%d')   
     # Obtener la hora actual
     current_time = datetime.now().strftime('%H%M%S')
-    ds.StudyTime = current_time
-    
+    ds.StudyTime = current_time 
     ds.StudyInstanceUID = generate_uid()  # UID único para el estudio
     ds.SeriesInstanceUID = generate_uid()  # UID único para la serie
     ds.SOPInstanceUID = generate_uid()  # UID único para la instancia de imagen
     ds.SOPClassUID = '1.2.840.10008.5.1.4.1.1.481.2'  # Secondary Capture Image Storage
-
     # Añadir atributos específicos de la imagen
     ds.Rows, ds.Columns = image.size[1], image.size[0]
     ds.BitsAllocated = 8
@@ -161,28 +186,23 @@ def convert_to_dicom(image, patient_id, patient_name, exam_date, series_number, 
     ds.HighBit = 7
     ds.PixelRepresentation = 0
     ds.SamplesPerPixel = 3  # 3 para imágenes en color RGB
-
     # Establecer los atributos necesarios para la escritura del archivo DICOM
     ds.is_little_endian = True
     ds.is_implicit_VR = True
-
     # Convertir la imagen PIL a píxeles RGB y asignarla al dataset
     if image.mode != 'RGB':
         image = image.convert('RGB')  # Convertir a RGB si no lo es
-
     ds.PhotometricInterpretation = "RGB"
     ds.PixelData = image.tobytes()
-
     # Añadir más atributos para la serie y el frame
     ds.SeriesNumber = str(series_number)
     ds.InstanceNumber = str(instance_number)
-
-    # Guardar el dataset como un archivo DICOM en la carpeta del paciente
-    dicom_filename = os.path.join(patient_directory, f"{patient_id}_{exam_date.strftime('%Y%m%d_%H%M%S')}_{series_number}_{instance_number}.dcm")
+    # Nombre de archivo DICOM
+    dicom_filename = os.path.join(patient_directory, f"{patient_name}_{lastname}_{exam_date.strftime('%Y%m%d')}_S{series_number}_I{instance_number}.dcm")
+    # Guardar el dataset como archivo DICOM
     ds.save_as(dicom_filename)
-
     return dicom_filename
-
+    
 # Configuración de labels de datos del paciente
 fInfo = ctk.CTkFrame(root, corner_radius=10)
 fInfo.grid(row=0, column=0, rowspan=1, columnspan=2, sticky="nsew", padx=20, pady=20)
@@ -231,7 +251,6 @@ entryDate = ctk.CTkEntry(master=fEntryDate, justify=CENTER)
 entryDate.insert(0, get_current_date())
 entryDate.configure(state="readonly")
 entryDate.pack(fill=X)
-
 # Visor de las imágenes cargadas
 fPicture = ctk.CTkFrame(root, corner_radius=10)
 fPicture.grid(row=5, column=0, rowspan=1, columnspan=2, sticky="nsew", padx=20, pady=20)
@@ -242,8 +261,12 @@ lPicture.pack(fill=BOTH)
 bgRoot = root.cget("bg")
 fButton = ctk.CTkFrame(root, fg_color=bgRoot)
 fButton.grid(row=7, column=0, rowspan=1, columnspan=2, padx=10, pady=10, sticky="n")
-BLoadImage = ctk.CTkButton(master=fButton, text="Cargar JPG", command=push_uploadbutton)
-BSendImage = ctk.CTkButton(master=fButton, text="Enviar DCM", command=push_sendbutton)
+fSend = ctk.CTkFrame(root, fg_color=bgRoot)
+fSend.grid(row=8, column=0, rowspan=1, columnspan=2, padx=10, pady=10, sticky="n")
+BLoadImage = ctk.CTkButton(master=fButton, text="Cargar JPG", command=push_cargarbutton)
+BSendImage = ctk.CTkButton(master=fButton, text="Convertir a DCM", command=push_convertbutton)
+BSend = ctk.CTkButton(master=fSend, text="Subir", command=menssage_convert)
+BSend.pack(fill=X)
 BLoadImage.grid(row=0, column=0, padx=20)
 BSendImage.grid(row=0, column=1, padx=20)
 
