@@ -17,51 +17,52 @@ root.columnconfigure(0, weight=1)
 root.columnconfigure(1, weight=3)
 
 # Variables globales
-loaded_images = []
+loaded_images = [] #Lista vacia donde se van albergar las imagenes seleecionadas
 current_image_index = 0
 
-# Funciones
-def open_image():
+# Eventos
+
+def open_image(): #Para abrir el explorador.
     global current_image_index
     file_paths = filedialog.askopenfilenames(filetypes=[("JPG files", "*.jpg"), ("JPEG files", "*.jpeg"), ("All files", "*.*")])
-    for file_path in file_paths:
-        if file_path:
-            image = Image.open(file_path)
-            ctk_image = ctk.CTkImage(light_image=image, size=(400, 400))
-            loaded_images.append(ctk_image)
-    
-    if len(loaded_images) > 0:
+    if file_paths: #Si se seleccionan archivos, para evitar que al querer cargar y dar cancelar me borre las anteriormente cargadas
+        for file_path in file_paths: #Redimencionamos y asignamos a las imagenes a una variable
+                image = Image.open(file_path)
+                ctk_image = ctk.CTkImage(light_image=image, size=(400, 400)) #Redimensionamiento
+                loaded_images.append(ctk_image) #Variable ctk_image contiene la lista de imagenes
+    if len(loaded_images) > 0: #Condicionales que configuran el comportamiento del slider si es 1 o varias imagenes
         current_image_index = 0
         update_image()
         if len(loaded_images) > 1:
             slider.configure(from_=0, to=len(loaded_images) - 1, state=NORMAL)  # Configurar el rango del slider
         else:
             slider.configure(state=DISABLED)  # Deshabilitar el slider si solo hay una imagen
-        slider.set(0)  # Restablecer el slider a la posición inicial
+            slider.set(0)  # Restablecer el slider a la posición inicial
     else:
-        lPicture.configure(image=None, text="Sin Imagen")
+        slider.configure(state=DISABLED)
+        slider.set(0)
+        
 
-def update_image():
+def update_image(): #Actualiza la configuracion del label que contiene la imagen
+    global current_image_index
     if loaded_images:
         ctk_image = loaded_images[current_image_index]
         lPicture.configure(image=ctk_image, text="")
         lPicture.image = ctk_image
 
-def on_slider_change(value): 
+def on_slider_change(value): #Actualiza el conportamiento del slider al cargar las imagenes
         global current_image_index
         current_image_index = int(value)
         update_image()
 
-def delete_List():
+def delete_list(): #Para borrar la lista de elementos de loaded_images cada que apretas un boton
     global loaded_images
-    loaded_images = []
+    loaded_images.clear()
     print("DATOS BORRADOS", len(loaded_images))
 
-def push_uploadbutton():
-    delete_List()
+def push_uploadbutton(): #Comandos combinados
+    delete_list()
     open_image()
-
-
 
 # Configuración de labels de datos del paciente
 fInfo = ctk.CTkFrame(root, corner_radius=10)
