@@ -7,7 +7,14 @@ import pydicom
 from pydicom.dataset import FileDataset, Dataset
 from pydicom.uid import generate_uid
 from datetime import datetime
+import os
 
+# Directorio base donde se guardarán las carpetas de cada paciente
+base_directory = "./dicom_images"
+
+# Crear directorio base si no existe
+if not os.path.exists(base_directory):
+    os.makedirs(base_directory)
 
 #Configuración de la ventana
 root = ctk.CTk()
@@ -95,15 +102,23 @@ def push_sendbutton():
         patient_id = entryId.get()
         patient_name = entryName.get()
         exam_date_str = entryDate.get()
+
         # Validar y convertir la fecha
         try:
             exam_date = datetime.strptime(exam_date_str, '%d/%m/%Y')
         except ValueError:
             # Manejar el caso donde la fecha no coincide con el formato esperado
             print(f"Error: '{exam_date_str}' no es una fecha válida en formato DD-MM-YYYY.")
-            return    
+            return
+        
+        # Crear directorio para el paciente si no existe
+        patient_directory = os.path.join(base_directory, f"Patient_{patient_id}")
+        if not os.path.exists(patient_directory):
+            os.makedirs(patient_directory)
+
         # Inicializar series_number para la primera serie
         series_number = 1
+
         # Convertir cada imagen cargada a DICOM
         for i, ctk_image in enumerate(loaded_images, start=1):
             # Obtener la imagen original de CTkImage
@@ -117,24 +132,28 @@ def push_sendbutton():
             instance_number = i
             
             # Convertir la imagen original a formato DICOM
-            dicom_filename = convert_to_dicom(original_image, patient_id, patient_name, exam_date, series_number, instance_number)
+            dicom_filename = convert_to_dicom(original_image, patient_id, patient_name, exam_date, series_number, instance_number, patient_directory)
             print(f"Imagen convertida a DICOM: {dicom_filename}")
 
-def convert_to_dicom(image, patient_id, patient_name, exam_date, series_number, instance_number):
+def convert_to_dicom(image, patient_id, patient_name, exam_date, series_number, instance_number, patient_directory):
     # Crear un objeto Dataset DICOM vacío
     ds = Dataset()
+
     # Añadir metadatos DICOM requeridos
     ds.PatientID = patient_id
     ds.PatientName = patient_name
     ds.Modality = "OT"  # Modality (Modalidad) específica para tu tipo de imagen
-    ds.StudyDate = exam_date.strftime('%Y%m%d') 
+    ds.StudyDate = exam_date.strftime('%Y%m%d')
+    
     # Obtener la hora actual
     current_time = datetime.now().strftime('%H%M%S')
-    ds.StudyTime = current_time  
+    ds.StudyTime = current_time
+    
     ds.StudyInstanceUID = generate_uid()  # UID único para el estudio
     ds.SeriesInstanceUID = generate_uid()  # UID único para la serie
     ds.SOPInstanceUID = generate_uid()  # UID único para la instancia de imagen
     ds.SOPClassUID = '1.2.840.10008.5.1.4.1.1.481.2'  # Secondary Capture Image Storage
+
     # Añadir atributos específicos de la imagen
     ds.Rows, ds.Columns = image.size[1], image.size[0]
     ds.BitsAllocated = 8
@@ -142,20 +161,26 @@ def convert_to_dicom(image, patient_id, patient_name, exam_date, series_number, 
     ds.HighBit = 7
     ds.PixelRepresentation = 0
     ds.SamplesPerPixel = 3  # 3 para imágenes en color RGB
+
     # Establecer los atributos necesarios para la escritura del archivo DICOM
     ds.is_little_endian = True
     ds.is_implicit_VR = True
+
     # Convertir la imagen PIL a píxeles RGB y asignarla al dataset
     if image.mode != 'RGB':
         image = image.convert('RGB')  # Convertir a RGB si no lo es
+
     ds.PhotometricInterpretation = "RGB"
     ds.PixelData = image.tobytes()
+
     # Añadir más atributos para la serie y el frame
     ds.SeriesNumber = str(series_number)
     ds.InstanceNumber = str(instance_number)
-    # Guardar el dataset como un archivo DICOM
-    dicom_filename = f"{patient_id}_{exam_date.strftime('%Y%m%d_%H%M%S')}_{series_number}_{instance_number}.dcm"
+
+    # Guardar el dataset como un archivo DICOM en la carpeta del paciente
+    dicom_filename = os.path.join(patient_directory, f"{patient_id}_{exam_date.strftime('%Y%m%d_%H%M%S')}_{series_number}_{instance_number}.dcm")
     ds.save_as(dicom_filename)
+
     return dicom_filename
 
 # Configuración de labels de datos del paciente
