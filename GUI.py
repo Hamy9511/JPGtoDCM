@@ -1,12 +1,15 @@
 # Librerias
 import os
+from datetime import datetime
 from tkinter import *
 from tkinter import filedialog, messagebox
 from PIL import Image, ImageTk
+import pydicom
 from pydicom.dataset import FileDataset, Dataset
-from pydicom.uid import generate_uid
-from datetime import datetime
+from pydicom.uid import ExplicitVRLittleEndian, generate_uid
+from pydicom import config
 import customtkinter as ctk
+from pacs_sender import enviar_imagenes_dicom 
 
 # Directorio base donde se guardarán las carpetas de cada paciente 
 base_directory = "./dicom_images"
@@ -39,7 +42,10 @@ current_image_index = 0
 # Seleccion de imagenes
 def open_image():
     global current_image_index
-    file_paths = filedialog.askopenfilenames(filetypes=[("JPG files", "*.jpg"), ("JPEG files", "*.jpeg"), ("All files", "*.*")])
+    file_paths = filedialog.askopenfilenames(
+        filetypes=[("JPG files", "*.jpg"), ("JPEG files", "*.jpeg"), ("All files", "*.*")],
+        title="Seleccionar imágenes JPG/JPEG" 
+    )
     if file_paths:
         for file_path in file_paths:
             image = Image.open(file_path)
@@ -158,49 +164,62 @@ def push_convertbutton():
             messagebox.showerror("Estado de conversión de imágenes", "Hubo un error al convertir algunas imágenes a DICOM")
     else:
         messagebox.showerror("Error", "No hay imágenes cargadas para convertir.")
-
-# Boton enviar a servidor
-def menssage_convert():
-    messagebox.showinfo("Estado de conversión de imágenes", "Imágenes JPG convertidos a Paciente DCM Exitosamente")
+def send_button():
+    initial_dir = "./dicom_images"
+    folder_path = filedialog.askdirectory(
+        initialdir=initial_dir,
+        title="Seleccionar Carpeta de Imágenes DICOM"
+    )
+    if folder_path:
+        # Obtener la lista de archivos DICOM en la carpeta seleccionada
+        dicom_files = [os.path.join(folder_path, file) for file in os.listdir(folder_path) if file.endswith(".dcm")]
+        # Llamar a la función del segundo script para enviar imágenes al PACS
+        enviar_imagenes_dicom(dicom_files)
 
 # Converitr JPG a DCM
 def convert_to_dicom(image, patient_id, patient_name, lastname, exam_date, series_number, instance_number, patient_directory):
+    
+    image =image.convert("RGB")
+
     # Crear un objeto Dataset DICOM vacío
-    ds = Dataset()
+    
+    file_meta = pydicom.dataset.FileMetaDataset()
+    file_meta.MediaStorageSOPClassUID = pydicom.uid.SecondaryCaptureImageStorage
+    file_meta.MediaStorageSOPInstanceUID = generate_uid()
+    file_meta.ImplementationClassUID = generate_uid()
+    
+    ds  = FileDataset(dicom_filename, {}, file_meta=file_meta, preamble=b"\0" * 128)
+
     # Añadir metadatos DICOM requeridos
     ds.PatientID = patient_id
-    ds.PatientName = f"{lastname}^{patient_name}"  # Formato: Apellido^Nombre
-    ds.Modality = "OT"  # Modality (Modalidad) específica para tu tipo de imagen
-    ds.StudyDate = exam_date.strftime('%Y%m%d')   
-    # Obtener la hora actual
-    current_time = datetime.now().strftime('%H%M%S')
-    ds.StudyTime = current_time 
-    ds.StudyInstanceUID = generate_uid()  # UID único para el estudio
-    ds.SeriesInstanceUID = generate_uid()  # UID único para la serie
-    ds.SOPInstanceUID = generate_uid()  # UID único para la instancia de imagen
-    ds.SOPClassUID = '1.2.840.10008.5.1.4.1.1.481.2'  # Secondary Capture Image Storage
-    # Añadir atributos específicos de la imagen
+    ds.PatientName = f"{lastname}^{patient_name}"
+    ds.StudyInstanceUID = generate_uid()  
+    ds.SeriesInstanceUID = generate_uid()  
+    ds.SOPInstanceUID = file_meta.MediaStorageSOPInstanceUID  
+    ds.SOPClassUID = file_meta.MediaStorageSOPClassUID
+    ds.ImageType = ["DERIVED", "SECONDARY", ""]
+    ds.PhotometricInterpretation = "RGB"
+    ds.SamplesPerPixel = 3
     ds.Rows, ds.Columns = image.size[1], image.size[0]
     ds.BitsAllocated = 8
     ds.BitsStored = 8
     ds.HighBit = 7
     ds.PixelRepresentation = 0
-    ds.SamplesPerPixel = 3  # 3 para imágenes en color RGB
-    # Establecer los atributos necesarios para la escritura del archivo DICOM
+    ds.Modality = "DM"  # Modality Digital Microscopy
+    # Convertir la imagen JPEG a píxeles y almacenarla como píxeles RGB
+    ds.PixelData = image.tobytes()
+    ds.StudyDate = exam_date.strftime('%Y%m%d')   
+    current_time = datetime.now().strftime('%H%M%S')
+    ds.StudyTime = current_time 
+    ds.SeriesNumber = "1"
+    ds.InstanceNumber = "1"
     ds.is_little_endian = True
     ds.is_implicit_VR = True
-    # Convertir la imagen PIL a píxeles RGB y asignarla al dataset
-    if image.mode != 'RGB':
-        image = image.convert('RGB')  # Convertir a RGB si no lo es
-    ds.PhotometricInterpretation = "RGB"
-    ds.PixelData = image.tobytes()
-    # Añadir más atributos para la serie y el frame
-    ds.SeriesNumber = str(series_number)
-    ds.InstanceNumber = str(instance_number)
+
     # Nombre de archivo DICOM
     dicom_filename = os.path.join(patient_directory, f"{patient_name}_{lastname}_{exam_date.strftime('%Y%m%d')}_S{series_number}_I{instance_number}.dcm")
     # Guardar el dataset como archivo DICOM
-    ds.save_as(dicom_filename)
+    ds.save_as(dicom_filename, write_like_original=False)
     return dicom_filename
     
 # Configuración de labels de datos del paciente
@@ -265,7 +284,7 @@ fSend = ctk.CTkFrame(root, fg_color=bgRoot)
 fSend.grid(row=8, column=0, rowspan=1, columnspan=2, padx=10, pady=10, sticky="n")
 BLoadImage = ctk.CTkButton(master=fButton, text="Cargar JPG", command=push_cargarbutton)
 BSendImage = ctk.CTkButton(master=fButton, text="Convertir a DCM", command=push_convertbutton)
-BSend = ctk.CTkButton(master=fSend, text="Subir", command=menssage_convert)
+BSend = ctk.CTkButton(master=fSend, text="Enviar Paciente", command=send_button)
 BSend.pack(fill=X)
 BLoadImage.grid(row=0, column=0, padx=20)
 BSendImage.grid(row=0, column=1, padx=20)
