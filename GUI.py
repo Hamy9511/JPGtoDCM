@@ -9,14 +9,23 @@ from pydicom.dataset import FileDataset, Dataset
 from pydicom.uid import ExplicitVRLittleEndian, generate_uid
 from pydicom import config
 import customtkinter as ctk
-from pacs_sender import enviar_imagenes_dicom 
+from customtkinter import CustomFont
+import subprocess
+from pacs_sender import send_to_pacs
+
+pacs_ip = '192.168.2.101'
+pacs_port = 4242
 
 # Directorio base donde se guardarán las carpetas de cada paciente 
 base_directory = "./dicom_images"
+base_directory1 = "./JPG_images"
 
 # Crear directorio base si no existe
 if not os.path.exists(base_directory):
     os.makedirs(base_directory)
+
+if not os.path.exists(base_directory1):
+    os.makedirs(base_directory1)
     
 #Variables Globales
 global_study_instance_uid = generate_uid()
@@ -46,9 +55,15 @@ current_image_index = 0
 # Seleccion de imagenes
 def open_image():
     global current_image_index
+    global global_study_instance_uid, global_series_instance_uid
+
+    # Generar nuevos UIDs para una nueva sesión de imágenes
+    global_study_instance_uid = generate_uid()
+    global_series_instance_uid = generate_uid()
+
     file_paths = filedialog.askopenfilenames(
         filetypes=[("JPG files", "*.jpg"), ("JPEG files", "*.jpeg"), ("All files", "*.*")],
-        title="Seleccionar imágenes JPG/JPEG" 
+        title="Seleccionar imágenes JPG/JPEG"
     )
     if file_paths:
         for file_path in file_paths:
@@ -65,9 +80,11 @@ def open_image():
         if len(loaded_images) > 1:
             slider.configure(from_=0, to=len(loaded_images) - 1, state=NORMAL)
             slider.set(0)
+            lCount.configure(text=f"Imagenes JPG = {len(loaded_images)}", font=("arial",12))
         else:
             slider.configure(state=DISABLED)
             slider.set(0)
+            lCount.configure(text=f"Imagenes JPG = {len(loaded_images)}", font=("arial",12))
     else:
         slider.configure(state=DISABLED)
         slider.set(0)
@@ -99,6 +116,9 @@ def delete_list():
 def push_cargarbutton():
     global loaded_images
     # Borra el contenido de los Entry
+    entryId.configure(state=NORMAL)
+    entryName.configure(state=NORMAL)
+    entryLastname.configure(state=NORMAL)
     entryId.delete(0, 'end')
     entryName.delete(0, 'end')
     entryLastname.delete(0, 'end')
@@ -133,7 +153,7 @@ def push_convertbutton():
 
     if loaded_images:
         # Crear directorio para el paciente si no existe
-        patient_directory = os.path.join(base_directory, f"Patient_{patient_id}")
+        patient_directory = os.path.join(base_directory, f"Patient_{patient_id}_{patient_name}")
         if not os.path.exists(patient_directory):
             os.makedirs(patient_directory)
 
@@ -175,10 +195,17 @@ def send_button():
         title="Seleccionar Carpeta de Imágenes DICOM"
     )
     if folder_path:
-        # Obtener la lista de archivos DICOM en la carpeta seleccionada
-        dicom_files = [os.path.join(folder_path, file) for file in os.listdir(folder_path) if file.endswith(".dcm")]
-        # Llamar a la función del segundo script para enviar imágenes al PACS
-        enviar_imagenes_dicom(dicom_files)
+        image_files = [f for f in os.listdir(folder_path) if f.endswith('.dcm')]
+        total_images = len(image_files)
+        
+        # Iterar sobre cada imagen DICOM en la carpeta seleccionada
+        for idx, filename in enumerate(image_files, start=1):
+            file_path = os.path.join(folder_path, filename)
+            send_to_pacs(file_path, pacs_ip, pacs_port)
+            
+            # Mostrar mensaje cuando se envía la última imagen
+            if idx == total_images:
+                messagebox.showinfo("Envío Completo", "Se han enviado todas las imágenes DICOM al PACS.")
 
 # Converitr JPG a DCM
 def convert_to_dicom(image, patient_id, patient_name, lastname, exam_date, series_number, instance_number, patient_directory):
@@ -225,6 +252,7 @@ def convert_to_dicom(image, patient_id, patient_name, lastname, exam_date, serie
     # Guardar el dataset como archivo DICOM
     ds.save_as(dicom_filename, write_like_original=False)
     return dicom_filename
+
 # Configuración de labels de datos del paciente
 fInfo = ctk.CTkFrame(root, corner_radius=10)
 fInfo.grid(row=0, column=0, rowspan=1, columnspan=2, sticky="nsew", padx=20, pady=20)
@@ -251,20 +279,26 @@ fDate.grid(row=4, column=0, padx=5, pady=10, sticky="nsew")
 lDate = ctk.CTkLabel(master=fDate, text="Fecha del Examen:", font=("arial", 12))
 lDate.pack()
 
+lCount = ctk.CTkLabel(master=root, text="")
+lCount.grid(row=7, column=0, rowspan=1, columnspan=2, sticky="nsew")
+
 # Configuración de comboboxes
 fEntryId = ctk.CTkFrame(root)
 fEntryId.grid(row=1, column=1, padx=10, pady=10, sticky="nsew")
 entryId = ctk.CTkEntry(master=fEntryId, justify=CENTER)
+entryId.configure(state="readonly")
 entryId.pack(fill=X)
 
 fEntryName = ctk.CTkFrame(root)
 fEntryName.grid(row=2, column=1, padx=10, pady=10, sticky="nsew")
 entryName = ctk.CTkEntry(master=fEntryName, justify=CENTER)
+entryName.configure(state="readonly")
 entryName.pack(fill=X)
 
 fEntryLastname = ctk.CTkFrame(root)
 fEntryLastname.grid(row=3, column=1, padx=10, pady=10, sticky="nsew")
 entryLastname = ctk.CTkEntry(master=fEntryLastname, justify=CENTER)
+entryLastname.configure(state="readonly")
 entryLastname.pack(fill=X)
 
 fEntryDate = ctk.CTkFrame(root)
@@ -282,9 +316,9 @@ lPicture.pack(fill=BOTH)
 # Botones
 bgRoot = root.cget("bg")
 fButton = ctk.CTkFrame(root, fg_color=bgRoot)
-fButton.grid(row=7, column=0, rowspan=1, columnspan=2, padx=10, pady=10, sticky="n")
+fButton.grid(row=8, column=0, rowspan=1, columnspan=2, padx=10, pady=10, sticky="n")
 fSend = ctk.CTkFrame(root, fg_color=bgRoot)
-fSend.grid(row=8, column=0, rowspan=1, columnspan=2, padx=10, pady=10, sticky="n")
+fSend.grid(row=9, column=0, rowspan=1, columnspan=2, padx=10, pady=10, sticky="n")
 BLoadImage = ctk.CTkButton(master=fButton, text="Cargar JPG", command=push_cargarbutton)
 BSendImage = ctk.CTkButton(master=fButton, text="Convertir a DCM", command=push_convertbutton)
 BSend = ctk.CTkButton(master=fSend, text="Enviar Paciente", command=send_button)
@@ -295,6 +329,7 @@ BSendImage.grid(row=0, column=1, padx=20)
 # Slider para ver imágenes
 slider = ctk.CTkSlider(master=root, from_=0, to=100, command=on_slider_change, state=DISABLED)
 slider.grid(row=6, column=0, rowspan=1, columnspan=2, sticky="nsew", padx=20, pady=20)
+
 
 # Fin de la aplicación
 root.mainloop()  
