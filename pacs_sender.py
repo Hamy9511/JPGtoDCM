@@ -3,7 +3,7 @@ import sys
 import uuid
 import tkinter as tk
 from tkinter import messagebox
-from pydicom import dcmread, dcmwrite
+from pydicom import dcmread
 from pydicom.uid import UID
 from pynetdicom import AE, StoragePresentationContexts
 
@@ -53,6 +53,7 @@ def main():
     pacs_ip = '192.168.2.101'  # IP del servidor PACS
     pacs_port = 4242  # Puerto del servidor PACS
 
+    # Variable para controlar el estado del envío
     all_sent = True
 
     # Iterar sobre los archivos en la carpeta
@@ -61,6 +62,7 @@ def main():
             file_path = os.path.join(folder_path, filename)
             if not send_to_pacs(file_path, pacs_ip, pacs_port):
                 all_sent = False
+                break  # Detener el bucle al primer error
 
     if all_sent:
         root = tk.Tk()
