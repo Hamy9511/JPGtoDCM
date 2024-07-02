@@ -1,6 +1,8 @@
 import os
 import sys
 import uuid
+import tkinter as tk
+from tkinter import messagebox
 from pydicom import dcmread, dcmwrite
 from pydicom.uid import UID
 from pynetdicom import AE, StoragePresentationContexts
@@ -26,7 +28,7 @@ def send_to_pacs(dicom_file, pacs_ip, pacs_port):
         ds = dcmread(dicom_file)
     except Exception as e:
         print(f"Error al leer {dicom_file}: {str(e)}")
-        return
+        return False
 
     ensure_valid_uids(ds)
 
@@ -35,8 +37,10 @@ def send_to_pacs(dicom_file, pacs_ip, pacs_port):
         status = assoc.send_c_store(ds)
         assoc.release()
         print(f"Enviado {dicom_file} al PACS con estado: {status}")
+        return True
     else:
         print("Error: No se pudo establecer la asociación con el PACS.")
+        return False
 
 def main():
     if len(sys.argv) < 2:
@@ -46,14 +50,26 @@ def main():
     # Directorio con las imágenes DICOM
     folder_path = sys.argv[1]
     # Configuración del PACS
-    pacs_ip= '192.168.2.101'  # IP del servidor PACS
+    pacs_ip = '192.168.2.101'  # IP del servidor PACS
     pacs_port = 4242  # Puerto del servidor PACS
+
+    all_sent = True
 
     # Iterar sobre los archivos en la carpeta
     for filename in os.listdir(folder_path):
         if filename.endswith('.dcm'):  # Asumiendo que son archivos DICOM
             file_path = os.path.join(folder_path, filename)
-            send_to_pacs(file_path, pacs_ip, pacs_port)
+            if not send_to_pacs(file_path, pacs_ip, pacs_port):
+                all_sent = False
+
+    if all_sent:
+        root = tk.Tk()
+        root.withdraw()
+        messagebox.showinfo("Éxito", "Todos los archivos DICOM se enviaron exitosamente al PACS.")
+    else:
+        root = tk.Tk()
+        root.withdraw()
+        messagebox.showwarning("Advertencia", "Algunos archivos DICOM no se pudieron enviar al PACS.")
 
 if __name__ == '__main__':
     main()

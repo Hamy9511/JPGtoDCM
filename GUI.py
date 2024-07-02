@@ -13,8 +13,6 @@ from customtkinter import CustomFont
 import subprocess
 from pacs_sender import send_to_pacs
 
-pacs_ip = '192.168.2.101'
-pacs_port = 4242
 
 # Directorio base donde se guardarán las carpetas de cada paciente 
 base_directory = "./dicom_images"
@@ -195,17 +193,8 @@ def send_button():
         title="Seleccionar Carpeta de Imágenes DICOM"
     )
     if folder_path:
-        image_files = [f for f in os.listdir(folder_path) if f.endswith('.dcm')]
-        total_images = len(image_files)
-        
-        # Iterar sobre cada imagen DICOM en la carpeta seleccionada
-        for idx, filename in enumerate(image_files, start=1):
-            file_path = os.path.join(folder_path, filename)
-            send_to_pacs(file_path, pacs_ip, pacs_port)
-            
-            # Mostrar mensaje cuando se envía la última imagen
-            if idx == total_images:
-                messagebox.showinfo("Envío Completo", "Se han enviado todas las imágenes DICOM al PACS.")
+        # Ejecutar pacs_sender.py con el directorio seleccionado como argumento
+        subprocess.run(["python", "pacs_sender.py", folder_path])
 
 # Converitr JPG a DCM
 def convert_to_dicom(image, patient_id, patient_name, lastname, exam_date, series_number, instance_number, patient_directory):
