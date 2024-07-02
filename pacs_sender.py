@@ -1,49 +1,51 @@
-from pynetdicom import AE, StoragePresentationContexts
+import os
+import uuid
 from pydicom import dcmread
+from pydicom.uid import UID
+from pynetdicom import AE, StoragePresentationContexts
 
-# Dirección y puerto del servidor PACS (Orthanc en este caso)
-PACS_IP = '192.168.2.100'  # IP de tu servidor Orthanc
-PACS_PORT = 4242  # Puerto de tu servidor Orthanc
-PACS_AET = b'Pato_Pacs'  # AET del servidor Orthanc
+def generate_dicom_uid():
+    return UID(f"1.2.826.0.1.3680043.9.7237.{uuid.uuid4()}")
 
-# Puerto local en el que escuchará el AE
-LOCAL_PORT = 4242  # Puerto local, ajusta según tu configuración
+def ensure_valid_uid(ds):
+    if 'SOPInstanceUID' not in ds or not ds.SOPInstanceUID.is_valid:
+        ds.SOPInstanceUID = generate_dicom_uid()
 
-def enviar_imagenes_dicom(dicom_files):
-    # Cargar las imágenes DICOM
-    imagenes_dicom = [dcmread(file) for file in dicom_files]
+def send_to_pacs(dicom_file, pacs_ip, pacs_port):
+    ae = AE()
 
-    # Configurar el AE (Application Entity)
-    ae = AE(ae_title=b'DCMSEND', port=LOCAL_PORT)  # Nombre del AE local y puerto local
-    
-    # Agregar contextos de presentación para almacenamiento
-    for context in StoragePresentationContexts:
-        ae.add_requested_context(context.abstract_syntax, transfer_syntax=context.transfer_syntax[0])
+    # Agregar contextos de presentación para almacenamiento de imágenes DICOM
+    ae.add_requested_context(UID('1.2.840.10008.5.1.4.1.1.7'), ['1.2.840.10008.1.2'])  # Secondary Capture Image Storage
 
-    # Método para manejar las solicitudes C-STORE
-    def on_c_store(ds, context, info):
-        # Aquí puedes agregar tu lógica para manejar las imágenes recibidas
-        # Por ejemplo, guardar las imágenes en un directorio local o procesarlas de alguna manera
-        return 0x0000  # Devuelve un código de estado de éxito
+    try:
+        ds = dcmread(dicom_file)
+    except Exception as e:
+        print(f"Error al leer {dicom_file}: {str(e)}")
+        return
 
-    # Asignar la función on_c_store al evento 'evt.on_c_store'
-    ae.on_c_store = on_c_store
+    ensure_valid_uid(ds)
 
-    # Establecer la conexión con el servidor PACS
-    assoc = ae.associate(PACS_IP, PACS_PORT, ae_title=PACS_AET)
-
+    assoc = ae.associate(pacs_ip, pacs_port)
     if assoc.is_established:
-        # Enviar cada imagen DICOM
-        for imagen in imagenes_dicom:
-            status = assoc.send_c_store(imagen)
-
-            # Verificar el estado del envío
-            if status:
-                print(f'Imagen {imagen.SOPInstanceUID} enviada correctamente')
-            else:
-                print(f'Error al enviar la imagen {imagen.SOPInstanceUID}')
-
-        # Finalizar la asociación
+        status = assoc.send_c_store(ds)
         assoc.release()
+        print(f"Enviado {dicom_file} al PACS con estado: {status}")
     else:
-        print('No se pudo establecer la conexión con el servidor PACS')
+        print("Error: No se pudo establecer la asociación con el PACS.")
+
+def main():
+    # Configuración del PACS
+    pacs_ip = '192.168.2.101'  # IP del servidor PACS
+    pacs_port = 4242  # Puerto del servidor PACS
+
+    # Carpeta donde están las imágenes DICOM
+    folder_path = './dicom_images/Patient_fghgf'
+
+    # Iterar sobre los archivos en la carpeta
+    for filename in os.listdir(folder_path):
+        if filename.endswith('.dcm'):  # Asumiendo que son archivos DICOM
+            file_path = os.path.join(folder_path, filename)
+            send_to_pacs(file_path, pacs_ip, pacs_port)
+
+if __name__ == '__main__':
+    main()

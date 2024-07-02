@@ -17,6 +17,10 @@ base_directory = "./dicom_images"
 # Crear directorio base si no existe
 if not os.path.exists(base_directory):
     os.makedirs(base_directory)
+    
+#Variables Globales
+global_study_instance_uid = generate_uid()
+global_series_instance_uid = generate_uid()
 
 # Configuración de la ventana
 root = ctk.CTk()
@@ -178,24 +182,24 @@ def send_button():
 
 # Converitr JPG a DCM
 def convert_to_dicom(image, patient_id, patient_name, lastname, exam_date, series_number, instance_number, patient_directory):
-    
-    image =image.convert("RGB")
+    global global_study_instance_uid, global_series_instance_uid
+
+    image = image.convert("RGB")
 
     # Crear un objeto Dataset DICOM vacío
-    
     file_meta = pydicom.dataset.FileMetaDataset()
     file_meta.MediaStorageSOPClassUID = pydicom.uid.SecondaryCaptureImageStorage
     file_meta.MediaStorageSOPInstanceUID = generate_uid()
     file_meta.ImplementationClassUID = generate_uid()
-    
-    ds  = FileDataset(dicom_filename, {}, file_meta=file_meta, preamble=b"\0" * 128)
+
+    ds = FileDataset("", {}, file_meta=file_meta, preamble=b"\0" * 128)
 
     # Añadir metadatos DICOM requeridos
     ds.PatientID = patient_id
     ds.PatientName = f"{lastname}^{patient_name}"
-    ds.StudyInstanceUID = generate_uid()  
-    ds.SeriesInstanceUID = generate_uid()  
-    ds.SOPInstanceUID = file_meta.MediaStorageSOPInstanceUID  
+    ds.StudyInstanceUID = global_study_instance_uid
+    ds.SeriesInstanceUID = global_series_instance_uid
+    ds.SOPInstanceUID = file_meta.MediaStorageSOPInstanceUID
     ds.SOPClassUID = file_meta.MediaStorageSOPClassUID
     ds.ImageType = ["DERIVED", "SECONDARY", ""]
     ds.PhotometricInterpretation = "RGB"
@@ -208,11 +212,11 @@ def convert_to_dicom(image, patient_id, patient_name, lastname, exam_date, serie
     ds.Modality = "DM"  # Modality Digital Microscopy
     # Convertir la imagen JPEG a píxeles y almacenarla como píxeles RGB
     ds.PixelData = image.tobytes()
-    ds.StudyDate = exam_date.strftime('%Y%m%d')   
+    ds.StudyDate = exam_date.strftime('%Y%m%d')
     current_time = datetime.now().strftime('%H%M%S')
-    ds.StudyTime = current_time 
-    ds.SeriesNumber = "1"
-    ds.InstanceNumber = "1"
+    ds.StudyTime = current_time
+    ds.SeriesNumber = str(series_number)  # Convertir a cadena si es un número entero
+    ds.InstanceNumber = str(instance_number)  # Convertir a cadena si es un número entero
     ds.is_little_endian = True
     ds.is_implicit_VR = True
 
@@ -221,7 +225,6 @@ def convert_to_dicom(image, patient_id, patient_name, lastname, exam_date, serie
     # Guardar el dataset como archivo DICOM
     ds.save_as(dicom_filename, write_like_original=False)
     return dicom_filename
-    
 # Configuración de labels de datos del paciente
 fInfo = ctk.CTkFrame(root, corner_radius=10)
 fInfo.grid(row=0, column=0, rowspan=1, columnspan=2, sticky="nsew", padx=20, pady=20)
