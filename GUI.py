@@ -33,15 +33,16 @@ global_series_instance_uid = generate_uid()
 root = ctk.CTk()
 root.config(borderwidth=10)
 root.title("JPGtoDICOM Sender")
-root.geometry("400x900")
+root.geometry("800x900")
 root.resizable(0, 0)
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
 
 # Configuración de grid
 root.columnconfigure(0, weight=1)
-root.columnconfigure(1, weight=3)
-
+root.columnconfigure(1, weight=1)
+root.columnconfigure(2, weight=1)
+root.columnconfigure(3, weight=1) 
 # Listas
 loaded_images = []
 
@@ -66,7 +67,14 @@ def open_image():
     if file_paths:
         for file_path in file_paths:
             image = Image.open(file_path)
-            ctk_image = ctk.CTkImage(light_image=image, size=(400, 400))
+            width_image_original, height_image_orinal = image.size
+            if height_image_orinal > width_image_original:
+                new_width = 150
+                new_height =400
+            else:
+                new_width = 400
+                new_height =400
+            ctk_image = ctk.CTkImage(light_image=image, size=(new_width, new_height))
             loaded_images.append(ctk_image)
         # Actualizar label de fecha
         entryDate.delete(0, END)
@@ -78,11 +86,11 @@ def open_image():
         if len(loaded_images) > 1:
             slider.configure(from_=0, to=len(loaded_images) - 1, state=NORMAL)
             slider.set(0)
-            lCount.configure(text=f"Imagenes JPG = {len(loaded_images)}", font=("arial",12))
+            lCount.configure(text=f"FRAMES = {len(loaded_images)}", font=("Helvetica",12))
         else:
             slider.configure(state=DISABLED)
             slider.set(0)
-            lCount.configure(text=f"Imagenes JPG = {len(loaded_images)}", font=("arial",12))
+            lCount.configure(text=f"FRAMES = {len(loaded_images)}", font=("Helvetica",12))
     else:
         slider.configure(state=DISABLED)
         slider.set(0)
@@ -117,10 +125,16 @@ def push_cargarbutton():
     entryId.configure(state=NORMAL)
     entryName.configure(state=NORMAL)
     entryLastname.configure(state=NORMAL)
+    entryBirth.configure(state=NORMAL)
+    textboxDescription.configure(state=NORMAL)
+    OptionMenuGender.configure(state=NORMAL)
     entryId.delete(0, 'end')
     entryName.delete(0, 'end')
     entryLastname.delete(0, 'end')
     entryDate.delete(0, 'end')
+    entryBirth.delete(0, 'end')
+    textboxDescription.delete(1.0, ctk.END)
+    OptionMenuGender.set("")
 
     # Borra la lista de imágenes cargadas
     delete_list()
@@ -136,6 +150,7 @@ def push_convertbutton():
     patient_name = entryName.get().strip()
     lastname = entryLastname.get().strip()
     exam_date_str = entryDate.get().strip()
+    
 
     # Verificar si algún campo está vacío
     if not patient_id or not patient_name or not lastname or not exam_date_str:
@@ -244,80 +259,101 @@ def convert_to_dicom(image, patient_id, patient_name, lastname, exam_date, serie
 
 # Configuración de labels de datos del paciente
 fInfo = ctk.CTkFrame(root, corner_radius=10)
-fInfo.grid(row=0, column=0, rowspan=1, columnspan=2, sticky="nsew", padx=20, pady=20)
-lInfo = ctk.CTkLabel(master=fInfo, text="INGRESAR DATOS DEL PACIENTE", font=("arial", 14))
+fInfo.grid(row=0, column=0, rowspan=1, columnspan=4, sticky="nsew", padx=20, pady=20)
+lInfo = ctk.CTkLabel(master=fInfo,text="INGRESAR DATOS DEL PACIENTE",font=("Helvetica",18,"italic"))
 lInfo.pack()
 
-fId = ctk.CTkFrame(master=root, corner_radius=10)
-fId.grid(row=1, column=0, padx=5, pady=10, sticky="nsew")
-lId = ctk.CTkLabel(master=fId, text="ID del paciente:", font=("arial", 12))
+bgRoot = root.cget("bg")
+fPatientData = ctk.CTkFrame(root, fg_color=bgRoot)
+fPatientData.grid(row=2, column=0, columnspan=4, padx=10, pady=10, sticky="nsew")
+fPatientData.columnconfigure(0,weight=1)
+fPatientData.columnconfigure(1,weight=3)
+fPatientData.columnconfigure(2,weight=1)
+fPatientData.columnconfigure(3,weight=3)
+
+fId = ctk.CTkFrame(master=fPatientData, corner_radius=10)
+fId.grid(row=0, column=0, padx=5, pady=10, sticky="nsew")
+lId = ctk.CTkLabel(master=fId, text="ID del paciente:", font=("Helvetica", 14))
 lId.pack()
 
-fName = ctk.CTkFrame(master=root, corner_radius=10)
-fName.grid(row=2, column=0, padx=5, pady=10, sticky="nsew")
-lName = ctk.CTkLabel(master=fName, text="Nombre:", font=("arial", 12))
+fName = ctk.CTkFrame(master=fPatientData, corner_radius=10)
+fName.grid(row=0, column=2, padx=5, pady=10, sticky="nsew")
+lName = ctk.CTkLabel(master=fName, text="Nombre:", font=("Helvetica", 14))
 lName.pack()
 
-fLastname = ctk.CTkFrame(master=root, corner_radius=10)
-fLastname.grid(row=3, column=0, padx=5, pady=10, sticky="nsew")
-lLastname = ctk.CTkLabel(master=fLastname, text="Apellido:", font=("arial", 12))
+fLastname = ctk.CTkFrame(master=fPatientData, corner_radius=10)
+fLastname.grid(row=1, column=2, padx=5, pady=10, sticky="nsew")
+lLastname = ctk.CTkLabel(master=fLastname, text="Apellido:", font=("Helvetica", 14))
 lLastname.pack()
 
-fDate = ctk.CTkFrame(master=root, corner_radius=10)
-fDate.grid(row=4, column=0, padx=5, pady=10, sticky="nsew")
-lDate = ctk.CTkLabel(master=fDate, text="Fecha del Examen:", font=("arial", 12))
+fDate = ctk.CTkFrame(master=fPatientData, corner_radius=10)
+fDate.grid(row=1, column=0, padx=5, pady=10, sticky="nsew")
+lDate = ctk.CTkLabel(master=fDate, text="Fecha del Examen:", font=("Helvetica", 14))
 lDate.pack()
 
-lCount = ctk.CTkLabel(master=root, text="")
-lCount.grid(row=7, column=0, rowspan=1, columnspan=2, sticky="nsew")
 
-# Configuración de comboboxes
-fEntryId = ctk.CTkFrame(root)
-fEntryId.grid(row=1, column=1, padx=10, pady=10, sticky="nsew")
-entryId = ctk.CTkEntry(master=fEntryId, justify=CENTER)
-entryId.configure(state="readonly")
-entryId.pack(fill=X)
+fBirthday = ctk.CTkFrame(master=fPatientData, corner_radius=10)
+fBirthday.grid(row=2, column=0, padx=5, pady=10, sticky="nsew")
+lBirthday = ctk.CTkLabel(master=fBirthday, text="Fecha de nacimiento:", font=("Helvetica", 14))
+lBirthday.pack()
 
-fEntryName = ctk.CTkFrame(root)
-fEntryName.grid(row=2, column=1, padx=10, pady=10, sticky="nsew")
-entryName = ctk.CTkEntry(master=fEntryName, justify=CENTER)
-entryName.configure(state="readonly")
-entryName.pack(fill=X)
+fGender = ctk.CTkFrame(master=fPatientData, corner_radius=10)
+fGender.grid(row=2, column=2, padx=5, pady=10, sticky="nsew")
+lGender = ctk.CTkLabel(master=fGender, text="Genero:", font=("Helvetica", 14))
+lGender.pack()
 
-fEntryLastname = ctk.CTkFrame(root)
-fEntryLastname.grid(row=3, column=1, padx=10, pady=10, sticky="nsew")
-entryLastname = ctk.CTkEntry(master=fEntryLastname, justify=CENTER)
-entryLastname.configure(state="readonly")
-entryLastname.pack(fill=X)
+fDescription = ctk.CTkFrame(master=fPatientData, corner_radius=10)
+fDescription.grid(row=3, column=0,rowspan=1, padx=5, pady=10, sticky="nsew")
+lDescription = ctk.CTkLabel(master=fDescription, text="Descripción:", font=("Helvetica", 14))
+lDescription.pack(fill=Y)
 
-fEntryDate = ctk.CTkFrame(root)
-fEntryDate.grid(row=4, column=1, padx=10, pady=10, sticky="nsew")
-entryDate = ctk.CTkEntry(master=fEntryDate, justify=CENTER)
+lCount = ctk.CTkLabel(master=root, text="", font=("Helvetica", 18, "bold"))
+lCount.grid(row=6, column=0, rowspan=1, columnspan=4, sticky="nsew")
+
+# Configuración de entradas de datos
+entryId = ctk.CTkEntry(master=fPatientData, justify=CENTER, font=("Helvetica", 14), state="readonly")
+entryId.grid(row=0, column=1, padx=10, pady=10, sticky="nsew")
+
+entryName = ctk.CTkEntry(master=fPatientData, justify=CENTER, font=("Helvetica", 14), state="readonly")
+entryName.grid(row=0, column=3, padx=10, pady=10, sticky="nsew")
+
+
+entryLastname = ctk.CTkEntry(master=fPatientData, justify=CENTER, font=("Helvetica", 14), state="readonly")
+entryLastname.grid(row=1, column=3, padx=10, pady=10, sticky="nsew")
+
+entryDate = ctk.CTkEntry(master=fPatientData, justify=CENTER, font=("Helvetica", 14),state="readonly")
 entryDate.insert(0, get_current_date())
-entryDate.configure(state="readonly")
-entryDate.pack(fill=X)
+entryDate.grid(row=1, column=1, padx=10, pady=10, sticky="nsew")
+
+textboxDescription = ctk.CTkTextbox(fPatientData, width=50, height=50, font=("Helvetica", 14), state=DISABLED)
+textboxDescription.grid(row=3, column=1, rowspan=1, columnspan=3, padx=10, pady=10, sticky="nsew")
+
+OptionMenuGender = ctk.CTkOptionMenu(master=fPatientData, values=["M", "F", "O"], width=70, state=DISABLED)
+OptionMenuGender.set("")
+OptionMenuGender.grid(row=2, column=3, padx=10, pady=10, sticky="w")
+
+entryBirth = ctk.CTkEntry(master=fPatientData, justify=CENTER, state="readonly")
+entryBirth.grid(row=2, column=1, padx=10, pady=10, sticky="nsew")
+
 # Visor de las imágenes cargadas
-fPicture = ctk.CTkFrame(root, corner_radius=10)
-fPicture.grid(row=5, column=0, rowspan=1, columnspan=2, sticky="nsew", padx=20, pady=20)
+fPicture = ctk.CTkFrame(root, corner_radius=10, fg_color=bgRoot)
+fPicture.grid(row=4, column=0, rowspan=1, columnspan=4, sticky="nsew", padx=150, pady=20)
 lPicture = ctk.CTkLabel(master=fPicture, text="Sin Imagen")
 lPicture.pack(fill=BOTH)
 
 # Botones
-bgRoot = root.cget("bg")
 fButton = ctk.CTkFrame(root, fg_color=bgRoot)
-fButton.grid(row=8, column=0, rowspan=1, columnspan=2, padx=10, pady=10, sticky="n")
-fSend = ctk.CTkFrame(root, fg_color=bgRoot)
-fSend.grid(row=9, column=0, rowspan=1, columnspan=2, padx=10, pady=10, sticky="n")
+fButton.grid(row=10, column=0, rowspan=1, columnspan=4, padx=10, pady=10, sticky="n")
 BLoadImage = ctk.CTkButton(master=fButton, text="Cargar JPG", command=push_cargarbutton)
 BSendImage = ctk.CTkButton(master=fButton, text="Convertir a DCM", command=push_convertbutton)
-BSend = ctk.CTkButton(master=fSend, text="Enviar Paciente", command=send_button)
-BSend.pack(fill=X)
+BSend = ctk.CTkButton(master=fButton, text="Enviar Paciente", command=send_button)
+BSend.grid(row=0, column=2, padx=20)
 BLoadImage.grid(row=0, column=0, padx=20)
 BSendImage.grid(row=0, column=1, padx=20)
 
 # Slider para ver imágenes
 slider = ctk.CTkSlider(master=root, from_=0, to=100, command=on_slider_change, state=DISABLED)
-slider.grid(row=6, column=0, rowspan=1, columnspan=2, sticky="nsew", padx=20, pady=20)
+slider.grid(row=5, column=0, rowspan=1, columnspan=4, sticky="nsew", padx=20, pady=20)
 
 
 # Fin de la aplicación
