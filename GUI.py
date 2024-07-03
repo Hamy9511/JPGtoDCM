@@ -321,8 +321,9 @@ entryName.grid(row=0, column=3, padx=10, pady=10, sticky="nsew")
 entryLastname = ctk.CTkEntry(master=fPatientData, justify=CENTER, font=("Helvetica", 14), state="readonly")
 entryLastname.grid(row=1, column=3, padx=10, pady=10, sticky="nsew")
 
-entryDate = ctk.CTkEntry(master=fPatientData, justify=CENTER, font=("Helvetica", 14),state="readonly")
+entryDate = ctk.CTkEntry(master=fPatientData, justify=CENTER, font=("Helvetica", 14))
 entryDate.insert(0, get_current_date())
+entryDate.configure(state="readonly")
 entryDate.grid(row=1, column=1, padx=10, pady=10, sticky="nsew")
 
 textboxDescription = ctk.CTkTextbox(fPatientData, width=50, height=50, font=("Helvetica", 14), state=DISABLED)
