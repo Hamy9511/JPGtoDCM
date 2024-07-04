@@ -1,16 +1,16 @@
 # Librerias
 import os
+import tkinter as tk
+import customtkinter as ctk
+import pydicom
+import subprocess
 from datetime import datetime
 from tkinter import *
 from tkinter import filedialog, messagebox
 from PIL import Image, ImageTk
-import pydicom
 from pydicom.dataset import FileDataset, Dataset
 from pydicom.uid import ExplicitVRLittleEndian, generate_uid
 from pydicom import config
-import customtkinter as ctk
-from customtkinter import CustomFont
-import subprocess
 from pacs_sender import send_to_pacs
 
 
@@ -49,7 +49,7 @@ loaded_images = []
 # Contador
 current_image_index = 0
 
-# Eventos
+# EVENTOS
 
 # Seleccion de imagenes
 def open_image():
@@ -60,20 +60,27 @@ def open_image():
     global_study_instance_uid = generate_uid()
     global_series_instance_uid = generate_uid()
 
+    initial_folder = "./JPG_images"
     file_paths = filedialog.askopenfilenames(
+        initialdir = initial_folder, 
         filetypes=[("JPG files", "*.jpg"), ("JPEG files", "*.jpeg"), ("All files", "*.*")],
         title="Seleccionar imágenes JPG/JPEG"
     )
     if file_paths:
         for file_path in file_paths:
             image = Image.open(file_path)
+            
+            #Ajustando dimensiones de la imagen en label
+            max_width = 500
+            max_height = 400
             width_image_original, height_image_orinal = image.size
-            if height_image_orinal > width_image_original:
-                new_width = 150
-                new_height =400
+            aspect_ratio = width_image_original/height_image_orinal
+            if width_image_original > height_image_orinal:
+                new_width = min(width_image_original, max_width)
+                new_height = int(new_width/aspect_ratio)
             else:
-                new_width = 400
-                new_height =400
+                new_height = min(height_image_orinal, max_height)
+                new_width = int(new_height*aspect_ratio)
             ctk_image = ctk.CTkImage(light_image=image, size=(new_width, new_height))
             loaded_images.append(ctk_image)
         # Actualizar label de fecha
@@ -121,20 +128,33 @@ def delete_list():
 # Comandos combinados
 def push_cargarbutton():
     global loaded_images
+
     # Borra el contenido de los Entry
     entryId.configure(state=NORMAL)
     entryName.configure(state=NORMAL)
     entryLastname.configure(state=NORMAL)
-    entryBirth.configure(state=NORMAL)
+    entryDay.configure(state=NORMAL)
+    entryMonth.configure(state=NORMAL)
+    entryYear.configure(state=NORMAL)
     textboxDescription.configure(state=NORMAL)
     OptionMenuGender.configure(state=NORMAL)
     entryId.delete(0, 'end')
     entryName.delete(0, 'end')
     entryLastname.delete(0, 'end')
     entryDate.delete(0, 'end')
-    entryBirth.delete(0, 'end')
-    textboxDescription.delete(1.0, ctk.END)
+    entryDay.delete(0, 'end')
+    entryMonth.delete(0, 'end')
+    entryYear.delete(0, 'end')
+    textboxDescription.delete(1.0, tk.END)
     OptionMenuGender.set("")
+
+    #Agregar el contenido holder en fecha de nacimiento
+    entryDay.insert(0, "DD")
+    entryDay.bind("<FocusIn>", clear_format_text)
+    entryMonth.insert(0, "MM")
+    entryMonth.bind("<FocusIn>", clear_format_text)
+    entryYear.insert(0, "AAAA")
+    entryYear.bind("<FocusIn>", clear_format_text)
 
     # Borra la lista de imágenes cargadas
     delete_list()
@@ -150,6 +170,12 @@ def push_convertbutton():
     patient_name = entryName.get().strip()
     lastname = entryLastname.get().strip()
     exam_date_str = entryDate.get().strip()
+    gender = OptionMenuGender.get().strip()
+    description = textboxDescription.get(1.0, ctk.END).strip()
+    day = entryDay.get().strip()
+    month = entryMonth.get().strip()
+    year = entryYear.get().strip() 
+    birthday = f"{year}/{month}/{day}"
     
 
     # Verificar si algún campo está vacío
@@ -162,6 +188,12 @@ def push_convertbutton():
     except ValueError:
         # Manejar el caso donde la fecha no coincide con el formato esperado
         messagebox.showerror("Error", "La fecha del examen no es válida. Use el formato DD/MM/YYYY.")
+        return
+    try:
+        Birthday = datetime.strptime(exam_date_str, '%d/%m/%Y')
+    except ValueError:
+        # Manejar el caso donde la fecha no coincide con el formato esperado
+        messagebox.showerror("Error", "La fecha de nacimiento no es válida. Use el formato DD/MM/YYYY.")
         return
 
     if loaded_images:
@@ -188,7 +220,7 @@ def push_convertbutton():
             instance_number = i
 
             # Convertir la imagen original a formato DICOM
-            dicom_filename = convert_to_dicom(original_image, patient_id, patient_name, lastname, exam_date, series_number, instance_number, patient_directory)
+            dicom_filename = convert_to_dicom(original_image, patient_id, patient_name, lastname, exam_date, gender, birthday, description, series_number, instance_number, patient_directory)
             if dicom_filename:
                 print(f"Imagen convertida a DICOM: {dicom_filename}")
             else:
@@ -212,7 +244,7 @@ def send_button():
         subprocess.run(["python", "pacs_sender.py", folder_path])
 
 # Converitr JPG a DCM
-def convert_to_dicom(image, patient_id, patient_name, lastname, exam_date, series_number, instance_number, patient_directory):
+def convert_to_dicom(image, patient_id, patient_name, lastname, exam_date, birthday, gender, description, series_number, instance_number, patient_directory):
     global global_study_instance_uid, global_series_instance_uid
 
     image = image.convert("RGB")
@@ -228,6 +260,9 @@ def convert_to_dicom(image, patient_id, patient_name, lastname, exam_date, serie
     # Añadir metadatos DICOM requeridos
     ds.PatientID = patient_id
     ds.PatientName = f"{lastname}^{patient_name}"
+    ds.PatientBirthDate = gender
+    ds.PatientSex = birthday
+    ds.StudyDescription = description
     ds.StudyInstanceUID = global_study_instance_uid
     ds.SeriesInstanceUID = global_series_instance_uid
     ds.SOPInstanceUID = file_meta.MediaStorageSOPInstanceUID
@@ -256,6 +291,10 @@ def convert_to_dicom(image, patient_id, patient_name, lastname, exam_date, serie
     # Guardar el dataset como archivo DICOM
     ds.save_as(dicom_filename, write_like_original=False)
     return dicom_filename
+
+#Indicadores de formato en fehca de nacimiento
+def clear_format_text(event):
+    event.widget.delete(0, ctk.END)
 
 # Configuración de labels de datos del paciente
 fInfo = ctk.CTkFrame(root, corner_radius=10)
@@ -291,11 +330,13 @@ fDate.grid(row=1, column=0, padx=5, pady=10, sticky="nsew")
 lDate = ctk.CTkLabel(master=fDate, text="Fecha del Examen:", font=("Helvetica", 14))
 lDate.pack()
 
-
 fBirthday = ctk.CTkFrame(master=fPatientData, corner_radius=10)
 fBirthday.grid(row=2, column=0, padx=5, pady=10, sticky="nsew")
 lBirthday = ctk.CTkLabel(master=fBirthday, text="Fecha de nacimiento:", font=("Helvetica", 14))
 lBirthday.pack()
+
+fBirthdaySpace = ctk.CTkFrame(master=fPatientData)
+fBirthdaySpace.grid(row=2, column=1, padx=10, pady=10, sticky="w")
 
 fGender = ctk.CTkFrame(master=fPatientData, corner_radius=10)
 fGender.grid(row=2, column=2, padx=5, pady=10, sticky="nsew")
@@ -303,7 +344,7 @@ lGender = ctk.CTkLabel(master=fGender, text="Genero:", font=("Helvetica", 14))
 lGender.pack()
 
 fDescription = ctk.CTkFrame(master=fPatientData, corner_radius=10)
-fDescription.grid(row=3, column=0,rowspan=1, padx=5, pady=10, sticky="nsew")
+fDescription.grid(row=3, column=0, padx=5, pady=10, sticky="we")
 lDescription = ctk.CTkLabel(master=fDescription, text="Descripción:", font=("Helvetica", 14))
 lDescription.pack(fill=Y)
 
@@ -324,7 +365,7 @@ entryLastname.grid(row=1, column=3, padx=10, pady=10, sticky="nsew")
 entryDate = ctk.CTkEntry(master=fPatientData, justify=CENTER, font=("Helvetica", 14))
 entryDate.insert(0, get_current_date())
 entryDate.configure(state="readonly")
-entryDate.grid(row=1, column=1, padx=10, pady=10, sticky="nsew")
+entryDate.grid(row=1, column=1, padx=10, pady=10, sticky="w")
 
 textboxDescription = ctk.CTkTextbox(fPatientData, width=50, height=50, font=("Helvetica", 14), state=DISABLED)
 textboxDescription.grid(row=3, column=1, rowspan=1, columnspan=3, padx=10, pady=10, sticky="nsew")
@@ -333,14 +374,25 @@ OptionMenuGender = ctk.CTkOptionMenu(master=fPatientData, values=["M", "F", "O"]
 OptionMenuGender.set("")
 OptionMenuGender.grid(row=2, column=3, padx=10, pady=10, sticky="w")
 
-entryBirth = ctk.CTkEntry(master=fPatientData, justify=CENTER, state="readonly")
-entryBirth.grid(row=2, column=1, padx=10, pady=10, sticky="nsew")
+entryDay =ctk.CTkEntry(master=fBirthdaySpace, width=40, justify=CENTER,state=DISABLED)
+entryDay.grid(row=0, column=0)
+entryMonth =ctk.CTkEntry(master=fBirthdaySpace, width=40, justify=CENTER,state=DISABLED)
+entryMonth.grid(row=0, column=2)
+entryYear =ctk.CTkEntry(master=fBirthdaySpace, width=50, justify=CENTER,state=DISABLED)
+entryYear.grid(row=0, column=4)
+
+
+lSeparador1 =ctk.CTkLabel(master=fBirthdaySpace, text="/", font=("Helvetica", 16))
+lSeparador1.grid(row=0, column=1, padx=5 )
+lSeparador2 =ctk.CTkLabel(master=fBirthdaySpace, text="/", font=("Helvetica", 16))
+lSeparador2.grid(row=0, column=3, padx=5 )
 
 # Visor de las imágenes cargadas
-fPicture = ctk.CTkFrame(root, corner_radius=10, fg_color=bgRoot)
+fPicture = ctk.CTkFrame(root, corner_radius=10, width=500, height=400, fg_color=bgRoot)
 fPicture.grid(row=4, column=0, rowspan=1, columnspan=4, sticky="nsew", padx=150, pady=20)
+fPicture.pack_propagate(FALSE)
 lPicture = ctk.CTkLabel(master=fPicture, text="Sin Imagen")
-lPicture.pack(fill=BOTH)
+lPicture.pack(expand=TRUE)
 
 # Botones
 fButton = ctk.CTkFrame(root, fg_color=bgRoot)
