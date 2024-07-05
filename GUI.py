@@ -32,7 +32,7 @@ global_series_instance_uid = generate_uid()
 # Configuración de la ventana
 root = ctk.CTk()
 root.config(borderwidth=10)
-root.title("JPGtoDICOM Sender")
+root.title("JPGtoDCM Sender")
 root.geometry("1280x500")
 root.resizable(0, 0)
 ctk.set_appearance_mode("dark")
