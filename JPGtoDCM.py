@@ -50,6 +50,7 @@ loaded_images = []
 # Contador
 current_image_index = 0
 
+
 # EVENTOS
 
 # Seleccion de imagenes
@@ -359,6 +360,7 @@ def main(folder_path):
         root = tk.Tk()
         root.withdraw()
         messagebox.showwarning("Advertencia", "Algunos archivos DICOM no se pudieron enviar al PACS.")
+
 
 
 # Configuración de labels de datos del paciente
