@@ -109,16 +109,20 @@ validate_day_command = root.register(lambda value: validate_numeric_input(value,
 validate_month_command = root.register(lambda value: validate_numeric_input(value, 1, 12))
 validate_year_command = root.register(lambda value: validate_year_input(value, 4))
 # Fecha de nacimiento - Día
-entryDay = ctk.CTkEntry(master=fBirthdaySpace, width=40, justify=CENTER, validate="key", validatecommand=(validate_day_command, "%P"))
+entryDay = ctk.CTkEntry(master=fBirthdaySpace, width=40, justify=CENTER, validate="key", validatecommand=(validate_day_command, "%P"), state=DISABLED)
 entryDay.grid(row=0, column=0)
 
 # Fecha de nacimiento - Mes
-entryMonth = ctk.CTkEntry(master=fBirthdaySpace, width=40, justify=CENTER, validate="key", validatecommand=(validate_month_command, "%P"))
+entryMonth = ctk.CTkEntry(master=fBirthdaySpace, width=40, justify=CENTER, validate="key", validatecommand=(validate_month_command, "%P"), state=DISABLED)
 entryMonth.grid(row=0, column=2)
 
 # Fecha de nacimiento - Año
-entryYear = ctk.CTkEntry(master=fBirthdaySpace, width=50, justify=CENTER, validate="key", validatecommand=(validate_year_command, "%P"))
+entryYear = ctk.CTkEntry(master=fBirthdaySpace, width=50, justify=CENTER, validate="key", validatecommand=(validate_year_command, "%P"), state=DISABLED)
 entryYear.grid(row=0, column=4)
+
+#formato
+lEntryBirth = ctk.CTkLabel(fBirthdaySpace, text="DD/MM/AAAA")
+lEntryBirth.grid(row=0, column=5, padx=10)
 
 # Separadores
 lSeparador1 = ctk.CTkLabel(master=fBirthdaySpace, text="/", font=("Helvetica", 16))
@@ -150,7 +154,7 @@ slider.grid(row=1, column=4, rowspan=4, pady=40)
 
 def on_closing():
     root.destroy()
-root.protocol("WM_DELETE_WINDOW", on_closing())
+root.protocol("WM_DELETE_WINDOW", on_closing)
 
 # Fin de la aplicación
 root.mainloop()
