@@ -1,9 +1,8 @@
-import sys
-sys.path.append("./Funciones")
 import customtkinter as ctk
 from tkinter import *
-from datetime import datetime
-
+from get_current_date import get_current_date
+from validate_birth import validate_numeric_input, validate_year_input
+from on_closing import on_closing
 # Configuración de la ventana
 root = ctk.CTk()
 root.config(borderwidth=10)
@@ -13,27 +12,6 @@ root.resizable(0, 0)
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
 
-# Adquirir fecha actual
-def get_current_date():
-    now = datetime.now()
-    return now.strftime("%d/%m/%Y")
-
-# Comando de validación para aceptar solo números y limitar rango
-def validate_numeric_input(value_if_allowed, min_val, max_val):
-    if value_if_allowed == "":
-        return True
-    if value_if_allowed.isdigit():
-        value = int(value_if_allowed)
-        return min_val <= value <= max_val
-    return False
-
-# Comando de validación para year
-def validate_year_input(value_if_allowed, length):
-    if value_if_allowed == "":
-        return True
-    if value_if_allowed.isdigit() and len(value_if_allowed) <= length:
-        return True
-    return False
 
 # Configuración de labels de datos del paciente
 # Titulo
@@ -131,15 +109,15 @@ validate_day_command = root.register(lambda value: validate_numeric_input(value,
 validate_month_command = root.register(lambda value: validate_numeric_input(value, 1, 12))
 validate_year_command = root.register(lambda value: validate_year_input(value, 4))
 # Fecha de nacimiento - Día
-entryDay = ctk.CTkEntry(master=fBirthdaySpace, width=40, justify=CENTER, validate="key", validatecommand=(validate_day_command, "%P"), state=DISABLED)
+entryDay = ctk.CTkEntry(master=fBirthdaySpace, width=40, justify=CENTER, validate="key", validatecommand=(validate_day_command, "%P"))
 entryDay.grid(row=0, column=0)
 
 # Fecha de nacimiento - Mes
-entryMonth = ctk.CTkEntry(master=fBirthdaySpace, width=40, justify=CENTER, validate="key", validatecommand=(validate_month_command, "%P"), state=DISABLED)
+entryMonth = ctk.CTkEntry(master=fBirthdaySpace, width=40, justify=CENTER, validate="key", validatecommand=(validate_month_command, "%P"))
 entryMonth.grid(row=0, column=2)
 
 # Fecha de nacimiento - Año
-entryYear = ctk.CTkEntry(master=fBirthdaySpace, width=50, justify=CENTER, validate="key", validatecommand=(validate_year_command, "%P"), state=DISABLED)
+entryYear = ctk.CTkEntry(master=fBirthdaySpace, width=50, justify=CENTER, validate="key", validatecommand=(validate_year_command, "%P"))
 entryYear.grid(row=0, column=4)
 
 # Separadores
@@ -168,12 +146,11 @@ BSendImage.grid(row=0, column=1, padx=20)
 # Slider para ver imágenes
 slider = ctk.CTkSlider(master=root, from_=0, to=100, orientation=VERTICAL, state=DISABLED) #on__slider_change
 slider.grid(row=1, column=4, rowspan=4, pady=40)
-
 # Función para cerrar la ventana y detener todo
+
 def on_closing():
     root.destroy()
-
-root.protocol("WM_DELETE_WINDOW", on_closing)
+root.protocol("WM_DELETE_WINDOW", on_closing())
 
 # Fin de la aplicación
 root.mainloop()
