@@ -143,11 +143,10 @@ def push_cargarbutton():
     entryId.delete(0, 'end')
     entryName.delete(0, 'end')
     entryLastname.delete(0, 'end')
-    entryDate.delete(0, 'end')
     entryDay.delete(0, 'end')
     entryMonth.delete(0, 'end')
     entryYear.delete(0, 'end')
-    textboxDescription.delete(1.0, tk.END)
+    textboxDescription.delete(0, 'end')
     OptionMenuGender.set("")
 
     #Agregar el contenido holder en fecha de nacimiento
@@ -434,7 +433,7 @@ entryDate.insert(0, get_current_date())
 entryDate.configure(state="readonly")
 entryDate.grid(row=1, column=1, padx=10, pady=10, sticky="w")
 
-textboxDescription = ctk.CTkTextbox(fPatientData, width=50, height=75, font=("Helvetica", 14), state=DISABLED)
+textboxDescription = ctk.CTkEntry(fPatientData, font=("Helvetica", 14), state=DISABLED)
 textboxDescription.grid(row=3, column=1, rowspan=1, columnspan=3, padx=10, pady=10, sticky="we")
 
 OptionMenuGender = ctk.CTkOptionMenu(master=fPatientData, values=["M", "F", "O"], width=70, state=DISABLED)
