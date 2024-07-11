@@ -2,7 +2,7 @@ import customtkinter as ctk
 from tkinter import *
 from get_current_date import get_current_date
 from validate_birth import validate_numeric_input, validate_year_input
-from on_closing import on_closing
+
 # Configuración de la ventana
 root = ctk.CTk()
 root.config(borderwidth=10)
