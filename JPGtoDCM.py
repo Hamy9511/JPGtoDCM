@@ -360,6 +360,21 @@ def main(folder_path):
         root.withdraw()
         messagebox.showwarning("Advertencia", "Algunos archivos DICOM no se pudieron enviar al PACS.")
 
+# Comando de validación para aceptar solo números y limitar rango
+def validate_year_input(value_if_allowed, length):
+    if value_if_allowed == "":
+        return True
+    if value_if_allowed.isdigit() and len(value_if_allowed) <= length:
+        return True
+    return False
+
+def validate_numeric_input(value_if_allowed, min_val, max_val):
+    if value_if_allowed == "":
+        return True
+    if value_if_allowed.isdigit():
+        value = int(value_if_allowed)
+        return min_val <= value <= max_val
+    return False
 
 
 # Configuración de labels de datos del paciente
@@ -440,11 +455,20 @@ OptionMenuGender = ctk.CTkOptionMenu(master=fPatientData, values=["M", "F", "O"]
 OptionMenuGender.set("")
 OptionMenuGender.grid(row=2, column=3, padx=10, pady=10, sticky="w")
 
-entryDay =ctk.CTkEntry(master=fBirthdaySpace, width=40, justify=CENTER,state=DISABLED)
+validate_day_command = root.register(lambda value: validate_numeric_input(value, 1, 31))
+validate_month_command = root.register(lambda value: validate_numeric_input(value, 1, 12))
+validate_year_command = root.register(lambda value: validate_year_input(value, 4))
+
+# Fecha de nacimiento - Día
+entryDay = ctk.CTkEntry(master=fBirthdaySpace, width=40, justify=CENTER, validate="key", validatecommand=(validate_day_command, "%P"), state=DISABLED)
 entryDay.grid(row=0, column=0)
-entryMonth =ctk.CTkEntry(master=fBirthdaySpace, width=40, justify=CENTER,state=DISABLED)
+
+# Fecha de nacimiento - Mes
+entryMonth = ctk.CTkEntry(master=fBirthdaySpace, width=40, justify=CENTER, validate="key", validatecommand=(validate_month_command, "%P"), state=DISABLED)
 entryMonth.grid(row=0, column=2)
-entryYear =ctk.CTkEntry(master=fBirthdaySpace, width=50, justify=CENTER,state=DISABLED)
+
+# Fecha de nacimiento - Año
+entryYear = ctk.CTkEntry(master=fBirthdaySpace, width=50, justify=CENTER, validate="key", validatecommand=(validate_year_command, "%P"), state=DISABLED)
 entryYear.grid(row=0, column=4)
 
 
