@@ -13,7 +13,6 @@ from pydicom import config, dcmread
 import uuid
 from pynetdicom import AE, StoragePresentationContexts
 
-
 # Directorio base donde se guardarán las carpetas de cada paciente 
 base_directory = "./dicom_images"
 base_directory1 = "./JPG_images"
@@ -44,6 +43,7 @@ root.columnconfigure(1, weight=1)
 root.columnconfigure(2, weight=1)
 root.columnconfigure(3, weight=1)
 root.columnconfigure(4, weight=1) 
+
 # Listas
 loaded_images = []
 
@@ -51,7 +51,73 @@ loaded_images = []
 current_image_index = 0
 
 
-# EVENTOS
+#FUNCIONES
+
+# Adquirir fecha actual
+def get_current_date():
+    now = datetime.now()
+    return now.strftime("%d/%m/%Y")
+
+# Actualiza las imagenes en el label
+def update_image():
+    global current_image_index
+    if loaded_images:
+        ctk_image = loaded_images[current_image_index]
+        lPicture.configure(image=ctk_image, text="")
+
+# Actualiza el slider
+def on_slider_change(value):
+    global current_image_index
+    current_image_index = int(value)
+    update_image()
+
+# Reiniciar lista de imagenes
+def delete_list():
+    global loaded_images
+    loaded_images.clear()
+
+
+# Comando de validación para aceptar solo números y limitar rango
+def validate_year_input(value_if_allowed, length):
+    if value_if_allowed == "":
+        return True
+    if value_if_allowed.isdigit() and len(value_if_allowed) <= length:
+        return True
+    return False
+
+def validate_numeric_input(value_if_allowed, min_val, max_val):
+    if value_if_allowed == "":
+        return True
+    if value_if_allowed.isdigit():
+        value = int(value_if_allowed)
+        return min_val <= value <= max_val
+    return False
+
+# Comportamiento del boton para cargar los JPG
+def push_cargarbutton():
+    global loaded_images
+
+    # Borra el contenido de los Entry
+    entryId.configure(state=NORMAL)
+    entryName.configure(state=NORMAL)
+    entryLastname.configure(state=NORMAL)
+    entryDay.configure(state=NORMAL)
+    entryMonth.configure(state=NORMAL)
+    entryYear.configure(state=NORMAL)
+    textboxDescription.configure(state=NORMAL)
+    OptionMenuGender.configure(state=NORMAL)
+    entryId.delete(0, 'end')
+    entryName.delete(0, 'end')
+    entryLastname.delete(0, 'end')
+    entryDay.delete(0, 'end')
+    entryMonth.delete(0, 'end')
+    entryYear.delete(0, 'end')
+    textboxDescription.delete(0, 'end')
+    OptionMenuGender.set("")
+
+    # Borra la lista de imágenes cargadas
+    delete_list()
+    open_image()
 
 # Seleccion de imagenes
 def open_image():
@@ -104,64 +170,7 @@ def open_image():
         slider.configure(state=DISABLED)
         slider.set(0)
 
-# Adquirir fecha actual
-def get_current_date():
-    now = datetime.now()
-    return now.strftime("%d/%m/%Y")
-
-# Actualiza las imagenes en el label
-def update_image():
-    global current_image_index
-    if loaded_images:
-        ctk_image = loaded_images[current_image_index]
-        lPicture.configure(image=ctk_image, text="")
-
-# Actualiza el slider
-def on_slider_change(value):
-    global current_image_index
-    current_image_index = int(value)
-    update_image()
-
-# Reiniciar lista de imagenes
-def delete_list():
-    global loaded_images
-    loaded_images.clear()
-
-# Comandos combinados
-def push_cargarbutton():
-    global loaded_images
-
-    # Borra el contenido de los Entry
-    entryId.configure(state=NORMAL)
-    entryName.configure(state=NORMAL)
-    entryLastname.configure(state=NORMAL)
-    entryDay.configure(state=NORMAL)
-    entryMonth.configure(state=NORMAL)
-    entryYear.configure(state=NORMAL)
-    textboxDescription.configure(state=NORMAL)
-    OptionMenuGender.configure(state=NORMAL)
-    entryId.delete(0, 'end')
-    entryName.delete(0, 'end')
-    entryLastname.delete(0, 'end')
-    entryDay.delete(0, 'end')
-    entryMonth.delete(0, 'end')
-    entryYear.delete(0, 'end')
-    textboxDescription.delete(0, 'end')
-    OptionMenuGender.set("")
-
-    #Agregar el contenido holder en fecha de nacimiento
-    entryDay.insert(0, "DD")
-    entryDay.bind("<FocusIn>", clear_format_text)
-    entryMonth.insert(0, "MM")
-    entryMonth.bind("<FocusIn>", clear_format_text)
-    entryYear.insert(0, "AAAA")
-    entryYear.bind("<FocusIn>", clear_format_text)
-
-    # Borra la lista de imágenes cargadas
-    delete_list()
-    open_image()
-
-# Funcion del boton Enviar DCM
+#Comportamiento del boton para convertir a DCM
 def push_convertbutton():
     global success
     success = False  # Inicializar success fuera del bloque if
@@ -172,11 +181,16 @@ def push_convertbutton():
     lastname = entryLastname.get().strip()
     exam_date_str = entryDate.get().strip()
     gender = OptionMenuGender.get().strip()
-    description = textboxDescription.get(1.0, ctk.END).strip()
+    description = textboxDescription.get().strip()
     day = entryDay.get().strip()
     month = entryMonth.get().strip()
     year = entryYear.get().strip() 
-    birthday = f"{year}/{month}/{day}"
+
+    if len(day) == 1:
+        day = f"0{day}"
+    if len(month) == 1:
+        month = f"0{month}"
+    birthday = f"{year}{month}{day}"
     
 
     # Verificar si algún campo está vacío
@@ -234,16 +248,6 @@ def push_convertbutton():
             messagebox.showerror("Estado de conversión de imágenes", "Hubo un error al convertir algunas imágenes a DICOM")
     else:
         messagebox.showerror("Error", "No hay imágenes cargadas para convertir.")
-def send_button():
-    global base_directory
-    initial_dir = "./dicom_images"
-    folder_path = filedialog.askdirectory(
-        initialdir=initial_dir,
-        title="Seleccionar Carpeta de Imágenes DICOM"
-    )
-    if folder_path:
-        main(folder_path)  # Asegúrate de pasar folder_path a main()
-
 
 # Converitr JPG a DCM
 def convert_to_dicom(image, patient_id, patient_name, lastname, exam_date, birthday, gender, description, series_number, instance_number, patient_directory):
@@ -294,15 +298,24 @@ def convert_to_dicom(image, patient_id, patient_name, lastname, exam_date, birth
     ds.save_as(dicom_filename, write_like_original=False)
     return dicom_filename
 
-#Indicadores de formato en fehca de nacimiento
-def clear_format_text(event):
-    event.widget.delete(0, ctk.END)
+#Comportamiento del boton Enviar Paciente
+def send_button():
+    global base_directory
+    initial_dir = "./dicom_images"
+    folder_path = filedialog.askdirectory(
+        initialdir=initial_dir,
+        title="Seleccionar Carpeta de Imágenes DICOM"
+    )
+    if folder_path:
+        main(folder_path)  # Asegúrate de pasar folder_path a main()
 
 #ENVIO AL PACS
 def generate_dicom_uid():
+
     return UID(f"1.2.826.0.1.3680043.9.7237.{uuid.uuid4()}")
 
 def ensure_valid_uids(ds):
+
     if 'StudyInstanceUID' not in ds or not ds.StudyInstanceUID.is_valid:
         ds.StudyInstanceUID = generate_dicom_uid()
     if 'SeriesInstanceUID' not in ds or not ds.SeriesInstanceUID.is_valid:
@@ -312,18 +325,14 @@ def ensure_valid_uids(ds):
 
 def send_to_pacs(dicom_file, pacs_ip, pacs_port):
     ae = AE()
-
     # Agregar contextos de presentación para almacenamiento de imágenes DICOM
     ae.add_requested_context(UID('1.2.840.10008.5.1.4.1.1.7'), ['1.2.840.10008.1.2'])  # Secondary Capture Image Storage
-
     try:
         ds = dcmread(dicom_file)
     except Exception as e:
         print(f"Error al leer {dicom_file}: {str(e)}")
         return False
-
     ensure_valid_uids(ds)
-
     assoc = ae.associate(pacs_ip, pacs_port)
     if assoc.is_established:
         status = assoc.send_c_store(ds)
@@ -335,7 +344,6 @@ def send_to_pacs(dicom_file, pacs_ip, pacs_port):
         return False
 
 def main(folder_path):
-
     # Configuración del PACS
     pacs_ip = '192.168.2.101'  # IP del servidor PACS
     pacs_port = 4242  # Puerto del servidor PACS
@@ -359,23 +367,6 @@ def main(folder_path):
         root = tk.Tk()
         root.withdraw()
         messagebox.showwarning("Advertencia", "Algunos archivos DICOM no se pudieron enviar al PACS.")
-
-# Comando de validación para aceptar solo números y limitar rango
-def validate_year_input(value_if_allowed, length):
-    if value_if_allowed == "":
-        return True
-    if value_if_allowed.isdigit() and len(value_if_allowed) <= length:
-        return True
-    return False
-
-def validate_numeric_input(value_if_allowed, min_val, max_val):
-    if value_if_allowed == "":
-        return True
-    if value_if_allowed.isdigit():
-        value = int(value_if_allowed)
-        return min_val <= value <= max_val
-    return False
-
 
 # Configuración de labels de datos del paciente
 fInfo = ctk.CTkFrame(root, corner_radius=10)
@@ -418,6 +409,8 @@ lBirthday.pack()
 
 fBirthdaySpace = ctk.CTkFrame(master=fPatientData, fg_color=bgRoot)
 fBirthdaySpace.grid(row=2, column=1, padx=10, pady=10, sticky="w")
+lFormat = ctk.CTkLabel(fBirthdaySpace, text="DD/MM/AAAA")
+lFormat.grid(row=0, column= 5, padx=10)
 
 fGender = ctk.CTkFrame(master=fPatientData, corner_radius=10)
 fGender.grid(row=2, column=2, padx=5, pady=10, sticky="nsew")
@@ -455,6 +448,7 @@ OptionMenuGender = ctk.CTkOptionMenu(master=fPatientData, values=["M", "F", "O"]
 OptionMenuGender.set("")
 OptionMenuGender.grid(row=2, column=3, padx=10, pady=10, sticky="w")
 
+# Validar solo valores numericos
 validate_day_command = root.register(lambda value: validate_numeric_input(value, 1, 31))
 validate_month_command = root.register(lambda value: validate_numeric_input(value, 1, 12))
 validate_year_command = root.register(lambda value: validate_year_input(value, 4))
@@ -470,7 +464,6 @@ entryMonth.grid(row=0, column=2)
 # Fecha de nacimiento - Año
 entryYear = ctk.CTkEntry(master=fBirthdaySpace, width=50, justify=CENTER, validate="key", validatecommand=(validate_year_command, "%P"), state=DISABLED)
 entryYear.grid(row=0, column=4)
-
 
 lSeparador1 =ctk.CTkLabel(master=fBirthdaySpace, text="/", font=("Helvetica", 16))
 lSeparador1.grid(row=0, column=1, padx=5 )
