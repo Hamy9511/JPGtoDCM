@@ -6,12 +6,12 @@ import pydicom
 from datetime import datetime
 from tkinter import *
 from tkinter import filedialog, messagebox
-from PIL import Image, ImageTk
-from pydicom.dataset import FileDataset, Dataset
-from pydicom.uid import ExplicitVRLittleEndian, generate_uid, UID
-from pydicom import config, dcmread
+from PIL import Image
+from pydicom.dataset import FileDataset
+from pydicom.uid import generate_uid, UID
+from pydicom import dcmread
 import uuid
-from pynetdicom import AE, StoragePresentationContexts
+from pynetdicom import AE
 
 # Directorio base donde se guardarán las carpetas de cada paciente 
 base_directory = "./dicom_images"
@@ -483,7 +483,7 @@ fButton.grid(row=4, column=1, columnspan=3, padx=10, pady=40, sticky="n")
 BLoadImage = ctk.CTkButton(master=fButton, text="Cargar JPG", command=push_cargarbutton)
 BSendImage = ctk.CTkButton(master=fButton, text="Convertir a DCM", command=push_convertbutton)
 BSend = ctk.CTkButton(master=fButton, text="Enviar Paciente", command=send_button)
-BSend.grid(row=0, column=2, padx=20)
+BSend.grid(row=0, column=2)
 BLoadImage.grid(row=0, column=0, padx=20)
 BSendImage.grid(row=0, column=1, padx=20)
 
