@@ -37,6 +37,8 @@ En la carpeta dist/main se encuentra el aplicativo. Al iniciar por primera vez g
 ## Uso
 Uso no clinico, actualmente solo se utiliza para imagenes de referencia.
 
+NOTA: Se esta trabajando para que el programa permita ingresar la IP, Port y AET del servidor para enviar al PACS ya que actualmente viene inmersa en el código.
+
 ## Contacto
 
 https://github.com/Hamy9511/
